@@ -1,11 +1,12 @@
 universe   = vanilla
 executable = Permutation_MVA.sh
-jobbatchname = Vcb_Permutation_MVA
+jobbatchname = Vcb_Permutation_XGBOOST
 log = condor.log
 getenv     = True
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
-request_memory = 8192
+request_memory = 8192*2
+request_cpus = 32
 arguments  = $(Process)
 output = job_$(Process).log
 error = job_$(Process).err

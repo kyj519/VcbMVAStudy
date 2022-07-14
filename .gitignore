@@ -6,3 +6,10 @@
 lib/*.tar.gz
 */obj
 *.~
+*.err
+*.json
+*.log
+*.h5
+*.json
+*.xml
+*.root
