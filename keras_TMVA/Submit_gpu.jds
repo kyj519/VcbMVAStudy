@@ -1,0 +1,15 @@
+universe   = vanilla
+executable = Permutation_MVA_gpu.sh
+jobbatchname = Vcb_Permutation_keras_TMVA_GPU
+log = condor.log
+getenv     = True
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+request_memory = 8192*2
+request_gpus = 1
+output = job_gpu.log
+error = job_gpu.err
+#preserve_relative_paths = True
+#transfer_output_files = TMVAClassification_BDTG.weights.xml
+
+queue 1
