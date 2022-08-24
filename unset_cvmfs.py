@@ -13,4 +13,5 @@ for key, item in os.environ.items():
     else:
         newenv = ":".join(envs)
         f.write(f"export {key}='{newenv}'\n")
+f.close()
             

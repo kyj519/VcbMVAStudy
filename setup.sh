@@ -2,9 +2,6 @@
 
 export DIR_PATH=`pwd`
 export WtoCB_PATH='/gv0/Users/yeonjoon/'
-conda activate cms-py3
-python3 unset_cvmfs.py
-source unsetter.sh
 #### use cvmfs for root ####
 # export CMS_PATH=/cvmfs/cms.cern.ch
 # source $CMS_PATH/cmsset_default.sh

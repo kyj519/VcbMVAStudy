@@ -2,8 +2,8 @@ import subprocess
 from itertools import product
 import sys
 
-n_jet = [4,5,6]
-pre_kin = [0,1]
+n_jet = [4]
+pre_kin = [0]
 procs = []
 
 for tup in product(n_jet,pre_kin):

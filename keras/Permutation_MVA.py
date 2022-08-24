@@ -2,12 +2,13 @@ import argparse
 from ROOT import TMVA, TString, TFile, TTree, TCut
 from subprocess import call
 import ROOT
-import os
+import os, sys
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential
 from keras.layers.core import Dense, Activation, Dropout
 from tensorflow.keras.layers import Add, Lambda
-from tensorflow.keras.constraints import unit_norm
+from tensorflow.keras.constraints import max_norm
 #from tf.keras.layers.noise import GaussianNoise
 from keras.layers.normalization.batch_normalization import BatchNormalization
 from tensorflow.keras import initializers
@@ -16,11 +17,10 @@ from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.optimizers import Adadelta
 from tensorflow.keras.metrics import AUC
 from tensorflow.keras.utils import plot_model
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from root_data_loader import load_data, classWtoSampleW
+
 from tensorflow.keras.callbacks import EarlyStopping
-import numpy as np
-import pandas as pd
 import tensorflow as tf
 import optuna
 import plotly
@@ -76,19 +76,20 @@ class KerasModel():
     self.model = Sequential()
 
 
-  def defineModel_3layer(self,input_dim_,depth,neuron_exponent):
+  def defineModel_3layer(self,input_dim_,depth,neuron_exponent,maxnorm):
+    K.clear_session()
     # Define model
 
     #
     # we can think of this chunk as the input layer
     self.model.add(Lambda(lambda X : X, input_shape=(input_dim_,))) #dummy Lamda layer for test
     for i in range(depth):
-      self.model.add(Dense(pow(2,neuron_exponent+1), kernel_initializer=initializers.he_normal(seed=1232), kernel_constraint=unit_norm()))
+      self.model.add(Dense(pow(2,neuron_exponent+1), kernel_initializer=initializers.he_normal(seed=1232), kernel_constraint=max_norm(maxnorm)))
       self.model.add(BatchNormalization())
       self.model.add(Activation('elu'))
       self.model.add(Dropout(0.50))
 
-      self.model.add(Dense(pow(2,neuron_exponent), kernel_initializer=initializers.he_normal(seed=1232), kernel_constraint=unit_norm()))
+      self.model.add(Dense(pow(2,neuron_exponent), kernel_initializer=initializers.he_normal(seed=1232), kernel_constraint=max_norm(maxnorm)))
       self.model.add(BatchNormalization())
       self.model.add(Activation('elu'))
       self.model.add(Dropout(0.50))
@@ -126,55 +127,20 @@ class KerasModel():
     except:
       print('[INFO] Failed to make model plot')
       
-def load_data(file_path, n_jet, pre_kin):
-  print(file_path)
-  data_sig = ROOT.RDataFrame('Permutation_Correct',file_path).Filter(f'n_jets=={n_jet:.0f}').AsNumpy(columns=varlist_prekin if pre_kin else varlist)
-  data_bkg = ROOT.RDataFrame('Permutation_Wrong', file_path).Filter(f'n_jets=={n_jet:.0f}').AsNumpy(columns=varlist_prekin if pre_kin else varlist)
 
-  sig = pd.DataFrame({k:v for k,v in data_sig.items()})
-  sig['y'] = np.ones(sig.shape[0])
-  bkg = pd.DataFrame({k:v for k,v in data_bkg.items()})
-  bkg['y'] = np.zeros(bkg.shape[0])
-  class_weights = {0:(sig.shape[0]+bkg.shape[0])/bkg.shape[0],1:(sig.shape[0]+bkg.shape[0])/sig.shape[0]}
-  df = pd.concat([sig,bkg],ignore_index=True)
-  df = df.sample(frac=1, random_state=999)
-  df = df.reset_index(drop=True)
-  train_df, test_df = train_test_split(df, test_size=0.2)
-  train_df, val_df = train_test_split(train_df, test_size=0.2)
-  
-  train_y = train_df.pop('y')
-  test_y = test_df.pop('y')
-  val_y = val_df.pop('y')
-  
-  train_features = np.array(train_df)
-  test_features = np.array(test_df)
-  val_features = np.array(val_df)
-
-  scaler = StandardScaler()
-
-  train_features = scaler.fit_transform(train_features)
-  val_features = scaler.transform(val_features)
-  test_features = scaler.transform(test_features)
-  
-  train_features = np.clip(train_features, -5, 5)
-  val_features = np.clip(val_features, -5, 5)
-  test_features = np.clip(test_features, -5, 5)
- 
-  
-  return {'train_features': train_features, 'test_features': test_features, 'val_features': val_features
-        ,'train_y': train_y, 'test_y': test_y, 'val_y': val_y, 'class_weights':class_weights}
 
 
 def objective_keras(trial: optuna.Trial, data):
   param = {
-    'depth':trial.suggest_int('depth',3,10),
-    'neuron_exponent':trial.suggest_int('neuron_exponent',3,10),
+    'depth':trial.suggest_int('depth',3,5),
+    'neuron_exponent':trial.suggest_int('neuron_exponent',3,5),
     'rho':trial.suggest_uniform('rho',0.3,0.99),
     'epsilon':trial.suggest_uniform('epsilon',1e-10,1e-7),
-    'batch_size':trial.suggest_categorical('batch_size',[pow(2,i) for i in range(1,15)])
+    'batch_size':trial.suggest_categorical('batch_size',[pow(2,i) for i in range(9,15)]),
+    'max_norm':trial.suggest_uniform('max_norm',1,10)
   }
   modelDNN = KerasModel()
-  modelDNN.defineModel_3layer(len(varlist_prekin) if chk_pre_kin else len(varlist),param['depth'],param['neuron_exponent'])
+  modelDNN.defineModel_3layer(len(varlist_prekin) if chk_pre_kin else len(varlist),param['depth'],param['neuron_exponent'],param['max_norm'])
   modelDNN.compile(optimizer_=Adadelta(learning_rate=1.0, rho=param['rho'], epsilon=param['epsilon'], decay=0.0, clipnorm=0.1))
   EPOCHS_SIZE = 1000
   BATCH_SIZE = param['batch_size']
@@ -185,9 +151,11 @@ def objective_keras(trial: optuna.Trial, data):
     mode='max',
     restore_best_weights=True)
   modelDNN.model.fit(data['train_features'],data['train_y'],epochs=EPOCHS_SIZE,batch_size=BATCH_SIZE,callbacks=[early_stopping],validation_data=(data['val_features'],data['val_y']))
+  modelDNN.plot_mymodel(outFile=f'model_trial_{trial.number}.png')
   test_result = modelDNN.model.evaluate(data['test_features'],data['test_y'],batch_size=1, verbose = 0)
-  
-  return test_result[0]
+  print(modelDNN.model.metrics_names)
+  print(test_result)
+  return test_result[1]
   
 if __name__ == '__main__':
 
@@ -203,10 +171,10 @@ if __name__ == '__main__':
   path_sample = os.environ["WtoCB_PATH"]
   filename = 'Vcb_Mu_TTLJ_WtoCB_powheg_25.root'
   
-  data = load_data(os.path.join(path_sample,filename),n_jet,chk_pre_kin)
+  data =   data_dict = load_data(os.path.join(path_sample,filename),n_jet,varlist_prekin if chk_pre_kin else varlist,0.2,0.2)
   optuna.logging.set_verbosity(optuna.logging.DEBUG)
   study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler())
-  study.optimize(lambda trial: objective_keras(trial, data),n_trials=100)
+  study.optimize(lambda trial: objective_keras(trial, data),n_trials=15)
   fig_contour = optuna.visualization.plot_contour(study)
   fig_importance = optuna.visualization.plot_param_importances(study)
   fig_contour.write_html(f'opt_contour.html')
@@ -220,10 +188,10 @@ if __name__ == '__main__':
   EPOCHS_SIZE = 1000
   BATCH_SIZE = param['batch_size']
   early_stopping = EarlyStopping(
-    monitor='val_auc', 
+    monitor='val_loss', 
     verbose=1,
-    patience=10,
-    mode='max',
+    patience=1,
+    mode='auto',
     restore_best_weights=True)
   modelDNN.model.fit(data['train_features'],data['train_y'],epochs=EPOCHS_SIZE,batch_size=BATCH_SIZE,callbacks=[early_stopping],validation_data=(data['val_features'],data['val_y']))
   modelDNN.save()

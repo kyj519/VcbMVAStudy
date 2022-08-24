@@ -10,7 +10,7 @@ Method         : BDT::BDTG
 TMVA Release   : 4.2.1         [262657]
 ROOT Release   : 6.24/06       [399366]
 Creator        : yeonjoon
-Date           : Wed Jul 13 13:09:11 2022
+Date           : Wed Jul 20 16:56:27 2022
 Host           : Linux 88470cd8874b 5.8.0-1040-azure #43~20.04.1-Ubuntu SMP Mon Aug 2 22:06:11 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
 Dir            : /data6/Users/yeonjoon/VcbMVAStudy
 Training events: 305994
