@@ -443,3 +443,445 @@
 
 	Job terminated of its own accord at 2022-08-22T07:43:34Z.
 ...
+000 (1229303.000.000) 2022-08-24 17:44:11 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229303.001.000) 2022-08-24 17:44:11 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229303.002.000) 2022-08-24 17:44:11 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229303.003.000) 2022-08-24 17:44:11 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229303.004.000) 2022-08-24 17:44:11 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229303.005.000) 2022-08-24 17:44:11 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+040 (1229303.000.000) 2022-08-24 17:44:12 Started transferring input files
+	Transferring to host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=slot1_1_3801_e5f4_1844>
+...
+040 (1229303.000.000) 2022-08-24 17:44:12 Finished transferring input files
+...
+040 (1229303.001.000) 2022-08-24 17:44:12 Started transferring input files
+	Transferring to host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=slot1_2_3801_e5f4_1845>
+...
+040 (1229303.001.000) 2022-08-24 17:44:12 Finished transferring input files
+...
+001 (1229303.000.000) 2022-08-24 17:44:13 Job executing on host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=startd_3767_6d59>
+...
+001 (1229303.001.000) 2022-08-24 17:44:13 Job executing on host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=startd_3767_6d59>
+...
+006 (1229303.000.000) 2022-08-24 17:44:21 Image size of job updated: 113304
+	21  -  MemoryUsage of job (MB)
+	20484  -  ResidentSetSize of job (KB)
+...
+006 (1229303.001.000) 2022-08-24 17:44:21 Image size of job updated: 20500
+	21  -  MemoryUsage of job (MB)
+	20488  -  ResidentSetSize of job (KB)
+...
+009 (1229303.002.000) 2022-08-24 17:44:23 Job was aborted.
+	via condor_rm (by user yeonjoon)
+...
+009 (1229303.003.000) 2022-08-24 17:44:23 Job was aborted.
+	via condor_rm (by user yeonjoon)
+...
+009 (1229303.004.000) 2022-08-24 17:44:23 Job was aborted.
+	via condor_rm (by user yeonjoon)
+...
+009 (1229303.005.000) 2022-08-24 17:44:23 Job was aborted.
+	via condor_rm (by user yeonjoon)
+...
+006 (1229303.000.000) 2022-08-24 17:44:23 Image size of job updated: 267448
+	21  -  MemoryUsage of job (MB)
+	20484  -  ResidentSetSize of job (KB)
+...
+006 (1229303.001.000) 2022-08-24 17:44:23 Image size of job updated: 267448
+	21  -  MemoryUsage of job (MB)
+	20488  -  ResidentSetSize of job (KB)
+...
+004 (1229303.000.000) 2022-08-24 17:44:23 Job was evicted.
+	(0) CPU times
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+	0  -  Run Bytes Sent By Job
+	736  -  Run Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :     0.01        1         1 
+	   Disk (KB)            :    31           1    127803 
+	   Gpus (Average)       :     0           1         1 "GPU-ebb73fb1"
+	   GpusMemory (MB)      :   311                       
+	   Memory (MB)          :    21       16384     16384 
+...
+004 (1229303.001.000) 2022-08-24 17:44:23 Job was evicted.
+	(0) CPU times
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+	0  -  Run Bytes Sent By Job
+	736  -  Run Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :     0.02        1         1 
+	   Disk (KB)            :    31           1    127803 
+	   Gpus (Average)       :     0           1         1 "GPU-5aaacc6f"
+	   GpusMemory (MB)      :   311                       
+	   Memory (MB)          :    21       16384     16384 
+...
+009 (1229303.000.000) 2022-08-24 17:44:23 Job was aborted.
+	via condor_rm (by user yeonjoon)
+...
+009 (1229303.001.000) 2022-08-24 17:44:23 Job was aborted.
+	via condor_rm (by user yeonjoon)
+...
+000 (1229304.000.000) 2022-08-24 17:44:34 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229304.001.000) 2022-08-24 17:44:34 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229304.002.000) 2022-08-24 17:44:34 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229304.003.000) 2022-08-24 17:44:34 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229304.004.000) 2022-08-24 17:44:34 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+000 (1229304.005.000) 2022-08-24 17:44:34 Job submitted from host: <172.30.1.100:9618?addrs=172.30.1.100-9618&alias=tamsa1.snu.ac.kr&noUDP&sock=schedd_3296_5c3e>
+...
+040 (1229304.000.000) 2022-08-24 17:44:35 Started transferring input files
+	Transferring to host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=slot1_1_3801_e5f4_1846>
+...
+040 (1229304.000.000) 2022-08-24 17:44:35 Finished transferring input files
+...
+040 (1229304.001.000) 2022-08-24 17:44:35 Started transferring input files
+	Transferring to host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=slot1_2_3801_e5f4_1847>
+...
+040 (1229304.001.000) 2022-08-24 17:44:35 Finished transferring input files
+...
+001 (1229304.000.000) 2022-08-24 17:44:36 Job executing on host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=startd_3767_6d59>
+...
+001 (1229304.001.000) 2022-08-24 17:44:36 Job executing on host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=startd_3767_6d59>
+...
+006 (1229304.000.000) 2022-08-24 17:44:44 Image size of job updated: 242140
+	114  -  MemoryUsage of job (MB)
+	116104  -  ResidentSetSize of job (KB)
+...
+006 (1229304.001.000) 2022-08-24 17:44:44 Image size of job updated: 116100
+	114  -  MemoryUsage of job (MB)
+	116100  -  ResidentSetSize of job (KB)
+...
+006 (1229304.000.000) 2022-08-24 17:46:06 Image size of job updated: 10012068
+	114  -  MemoryUsage of job (MB)
+	116104  -  ResidentSetSize of job (KB)
+...
+040 (1229304.000.000) 2022-08-24 17:46:06 Started transferring output files
+...
+040 (1229304.000.000) 2022-08-24 17:46:06 Finished transferring output files
+...
+005 (1229304.000.000) 2022-08-24 17:46:06 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:01:13, Sys 0 00:00:08  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:01:13, Sys 0 00:00:08  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	571373  -  Run Bytes Sent By Job
+	736  -  Run Bytes Received By Job
+	571373  -  Total Bytes Sent By Job
+	736  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :     0.04        1         1 
+	   Disk (KB)            : 13540           1    127803 
+	   Gpus (Average)       :     0           1         1 "GPU-ebb73fb1"
+	   GpusMemory (MB)      :   311                       
+	   Memory (MB)          :   114       16384     16384 
+
+	Job terminated of its own accord at 2022-08-24T08:46:06Z.
+...
+040 (1229304.002.000) 2022-08-24 17:46:35 Started transferring input files
+	Transferring to host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=slot1_1_3801_e5f4_1848>
+...
+040 (1229304.002.000) 2022-08-24 17:46:35 Finished transferring input files
+...
+001 (1229304.002.000) 2022-08-24 17:46:36 Job executing on host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=startd_3767_6d59>
+...
+006 (1229304.002.000) 2022-08-24 17:46:44 Image size of job updated: 1420868
+	1388  -  MemoryUsage of job (MB)
+	1420868  -  ResidentSetSize of job (KB)
+...
+006 (1229304.001.000) 2022-08-24 17:49:44 Image size of job updated: 12816432
+	2806  -  MemoryUsage of job (MB)
+	2872592  -  ResidentSetSize of job (KB)
+...
+006 (1229304.002.000) 2022-08-24 17:51:44 Image size of job updated: 13539012
+	3350  -  MemoryUsage of job (MB)
+	3430316  -  ResidentSetSize of job (KB)
+...
+006 (1229304.001.000) 2022-08-24 17:54:44 Image size of job updated: 12856044
+	2806  -  MemoryUsage of job (MB)
+	2872592  -  ResidentSetSize of job (KB)
+...
+006 (1229304.002.000) 2022-08-24 17:56:45 Image size of job updated: 13585772
+	3350  -  MemoryUsage of job (MB)
+	3430316  -  ResidentSetSize of job (KB)
+...
+006 (1229304.002.000) 2022-08-24 18:01:45 Image size of job updated: 13590132
+	3350  -  MemoryUsage of job (MB)
+	3430316  -  ResidentSetSize of job (KB)
+...
+006 (1229304.001.000) 2022-08-24 18:04:45 Image size of job updated: 12909316
+	2841  -  MemoryUsage of job (MB)
+	2908320  -  ResidentSetSize of job (KB)
+...
+006 (1229304.002.000) 2022-08-24 18:06:45 Image size of job updated: 13686552
+	3350  -  MemoryUsage of job (MB)
+	3430316  -  ResidentSetSize of job (KB)
+...
+006 (1229304.002.000) 2022-08-24 18:16:47 Image size of job updated: 15858844
+	3375  -  MemoryUsage of job (MB)
+	3455332  -  ResidentSetSize of job (KB)
+...
+006 (1229304.002.000) 2022-08-24 18:21:47 Image size of job updated: 15858844
+	3412  -  MemoryUsage of job (MB)
+	3493688  -  ResidentSetSize of job (KB)
+...
+006 (1229304.001.000) 2022-08-24 18:29:47 Image size of job updated: 12909316
+	3589  -  MemoryUsage of job (MB)
+	3675136  -  ResidentSetSize of job (KB)
+...
+006 (1229304.001.000) 2022-08-24 18:49:49 Image size of job updated: 12909844
+	3589  -  MemoryUsage of job (MB)
+	3675136  -  ResidentSetSize of job (KB)
+...
+006 (1229304.001.000) 2022-08-24 18:54:50 Image size of job updated: 12918328
+	3589  -  MemoryUsage of job (MB)
+	3675136  -  ResidentSetSize of job (KB)
+...
+006 (1229304.001.000) 2022-08-24 18:59:51 Image size of job updated: 14790144
+	3589  -  MemoryUsage of job (MB)
+	3675136  -  ResidentSetSize of job (KB)
+...
+006 (1229304.002.000) 2022-08-24 19:01:53 Image size of job updated: 15918984
+	3412  -  MemoryUsage of job (MB)
+	3493688  -  ResidentSetSize of job (KB)
+...
+006 (1229304.002.000) 2022-08-24 19:21:55 Image size of job updated: 15932896
+	3412  -  MemoryUsage of job (MB)
+	3493688  -  ResidentSetSize of job (KB)
+...
+040 (1229304.001.000) 2022-08-24 19:27:33 Started transferring output files
+...
+040 (1229304.001.000) 2022-08-24 19:27:33 Finished transferring output files
+...
+005 (1229304.001.000) 2022-08-24 19:27:33 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 01:37:53, Sys 0 00:05:31  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 01:37:53, Sys 0 00:05:31  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	14066553  -  Run Bytes Sent By Job
+	736  -  Run Bytes Received By Job
+	14066553  -  Total Bytes Sent By Job
+	736  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :     1.00        1         1 
+	   Disk (KB)            : 30825           1    127803 
+	   Gpus (Average)       :     0           1         1 "GPU-5aaacc6f"
+	   GpusMemory (MB)      :  3056                       
+	   Memory (MB)          :  3589       16384     16384 
+
+	Job terminated of its own accord at 2022-08-24T10:27:33Z.
+...
+040 (1229304.003.000) 2022-08-24 19:27:45 Started transferring input files
+	Transferring to host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=slot1_2_3801_e5f4_1849>
+...
+040 (1229304.003.000) 2022-08-24 19:27:45 Finished transferring input files
+...
+001 (1229304.003.000) 2022-08-24 19:27:46 Job executing on host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=startd_3767_6d59>
+...
+006 (1229304.003.000) 2022-08-24 19:27:55 Image size of job updated: 770376
+	140  -  MemoryUsage of job (MB)
+	142872  -  ResidentSetSize of job (KB)
+...
+040 (1229304.002.000) 2022-08-24 19:29:04 Started transferring output files
+...
+040 (1229304.002.000) 2022-08-24 19:29:04 Finished transferring output files
+...
+005 (1229304.002.000) 2022-08-24 19:29:04 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 01:38:10, Sys 0 00:05:56  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 01:38:10, Sys 0 00:05:56  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	13669878  -  Run Bytes Sent By Job
+	736  -  Run Bytes Received By Job
+	13669878  -  Total Bytes Sent By Job
+	736  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :     1.00        1         1 
+	   Disk (KB)            : 16230           1    127803 
+	   Gpus (Average)       :     0.25        1         1 "GPU-ebb73fb1"
+	   GpusMemory (MB)      :  3722                       
+	   Memory (MB)          :  3412       16384     16384 
+
+	Job terminated of its own accord at 2022-08-24T10:29:04Z.
+...
+040 (1229304.004.000) 2022-08-24 19:29:46 Started transferring input files
+	Transferring to host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=slot1_1_3801_e5f4_1850>
+...
+040 (1229304.004.000) 2022-08-24 19:29:46 Finished transferring input files
+...
+001 (1229304.004.000) 2022-08-24 19:29:47 Job executing on host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=startd_3767_6d59>
+...
+006 (1229304.004.000) 2022-08-24 19:29:55 Image size of job updated: 4842548
+	1332  -  MemoryUsage of job (MB)
+	1362952  -  ResidentSetSize of job (KB)
+...
+006 (1229304.003.000) 2022-08-24 19:32:56 Image size of job updated: 11601692
+	1948  -  MemoryUsage of job (MB)
+	1994684  -  ResidentSetSize of job (KB)
+...
+006 (1229304.004.000) 2022-08-24 19:34:55 Image size of job updated: 12750244
+	2636  -  MemoryUsage of job (MB)
+	2698600  -  ResidentSetSize of job (KB)
+...
+006 (1229304.003.000) 2022-08-24 19:37:57 Image size of job updated: 11630420
+	2151  -  MemoryUsage of job (MB)
+	2202580  -  ResidentSetSize of job (KB)
+...
+006 (1229304.004.000) 2022-08-24 19:39:56 Image size of job updated: 12754604
+	3293  -  MemoryUsage of job (MB)
+	3371400  -  ResidentSetSize of job (KB)
+...
+006 (1229304.003.000) 2022-08-24 19:42:57 Image size of job updated: 11657352
+	2152  -  MemoryUsage of job (MB)
+	2202908  -  ResidentSetSize of job (KB)
+...
+006 (1229304.004.000) 2022-08-24 19:44:57 Image size of job updated: 12797900
+	3293  -  MemoryUsage of job (MB)
+	3371400  -  ResidentSetSize of job (KB)
+...
+006 (1229304.003.000) 2022-08-24 19:47:59 Image size of job updated: 11680256
+	2154  -  MemoryUsage of job (MB)
+	2205428  -  ResidentSetSize of job (KB)
+...
+006 (1229304.003.000) 2022-08-24 19:52:59 Image size of job updated: 11708984
+	2154  -  MemoryUsage of job (MB)
+	2205428  -  ResidentSetSize of job (KB)
+...
+006 (1229304.003.000) 2022-08-24 19:57:59 Image size of job updated: 11737968
+	2154  -  MemoryUsage of job (MB)
+	2205428  -  ResidentSetSize of job (KB)
+...
+040 (1229304.003.000) 2022-08-24 19:58:11 Started transferring output files
+...
+040 (1229304.003.000) 2022-08-24 19:58:11 Finished transferring output files
+...
+005 (1229304.003.000) 2022-08-24 19:58:11 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:29:39, Sys 0 00:01:38  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:29:39, Sys 0 00:01:38  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	12749847  -  Run Bytes Sent By Job
+	736  -  Run Bytes Received By Job
+	12749847  -  Total Bytes Sent By Job
+	736  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :     1.00        1         1 
+	   Disk (KB)            : 19161           1    127803 
+	   Gpus (Average)       :                 1         1 "GPU-5aaacc6f"
+	   GpusMemory (MB)      :  1462                       
+	   Memory (MB)          :  2154       16384     16384 
+
+	Job terminated of its own accord at 2022-08-24T10:58:11Z.
+...
+040 (1229304.005.000) 2022-08-24 19:59:06 Started transferring input files
+	Transferring to host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=slot1_2_3801_e5f4_1851>
+...
+040 (1229304.005.000) 2022-08-24 19:59:06 Finished transferring input files
+...
+001 (1229304.005.000) 2022-08-24 19:59:07 Job executing on host: <172.30.1.111:9618?addrs=172.30.1.111-9618&alias=n11&noUDP&sock=startd_3767_6d59>
+...
+006 (1229304.005.000) 2022-08-24 19:59:16 Image size of job updated: 1473064
+	1439  -  MemoryUsage of job (MB)
+	1473064  -  ResidentSetSize of job (KB)
+...
+006 (1229304.005.000) 2022-08-24 20:04:17 Image size of job updated: 13448780
+	4126  -  MemoryUsage of job (MB)
+	4224876  -  ResidentSetSize of job (KB)
+...
+006 (1229304.005.000) 2022-08-24 20:09:17 Image size of job updated: 13470248
+	4126  -  MemoryUsage of job (MB)
+	4224876  -  ResidentSetSize of job (KB)
+...
+006 (1229304.004.000) 2022-08-24 20:10:00 Image size of job updated: 13255276
+	3293  -  MemoryUsage of job (MB)
+	3371400  -  ResidentSetSize of job (KB)
+...
+006 (1229304.005.000) 2022-08-24 20:14:17 Image size of job updated: 13476404
+	4126  -  MemoryUsage of job (MB)
+	4224876  -  ResidentSetSize of job (KB)
+...
+006 (1229304.005.000) 2022-08-24 20:19:18 Image size of job updated: 13478456
+	4126  -  MemoryUsage of job (MB)
+	4224876  -  ResidentSetSize of job (KB)
+...
+006 (1229304.005.000) 2022-08-24 20:24:18 Image size of job updated: 13492692
+	4126  -  MemoryUsage of job (MB)
+	4224876  -  ResidentSetSize of job (KB)
+...
+006 (1229304.005.000) 2022-08-24 20:29:18 Image size of job updated: 14080300
+	4126  -  MemoryUsage of job (MB)
+	4224876  -  ResidentSetSize of job (KB)
+...
+006 (1229304.004.000) 2022-08-24 20:49:37 Image size of job updated: 13343744
+	3293  -  MemoryUsage of job (MB)
+	3371400  -  ResidentSetSize of job (KB)
+...
+040 (1229304.004.000) 2022-08-24 20:49:37 Started transferring output files
+...
+040 (1229304.004.000) 2022-08-24 20:49:37 Finished transferring output files
+...
+005 (1229304.004.000) 2022-08-24 20:49:38 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 01:17:04, Sys 0 00:04:17  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 01:17:04, Sys 0 00:04:17  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	12787338  -  Run Bytes Sent By Job
+	736  -  Run Bytes Received By Job
+	12787338  -  Total Bytes Sent By Job
+	736  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :     1.00        1         1 
+	   Disk (KB)            : 19671           1    127803 
+	   Gpus (Average)       :     0.23        1         1 "GPU-ebb73fb1"
+	   GpusMemory (MB)      :  2926                       
+	   Memory (MB)          :  3293       16384     16384 
+
+	Job terminated of its own accord at 2022-08-24T11:49:37Z.
+...
+006 (1229304.005.000) 2022-08-24 21:39:26 Image size of job updated: 14080300
+	4130  -  MemoryUsage of job (MB)
+	4229112  -  ResidentSetSize of job (KB)
+...
+006 (1229304.005.000) 2022-08-24 21:42:12 Image size of job updated: 14437500
+	4130  -  MemoryUsage of job (MB)
+	4229112  -  ResidentSetSize of job (KB)
+...
+040 (1229304.005.000) 2022-08-24 21:42:12 Started transferring output files
+...
+040 (1229304.005.000) 2022-08-24 21:42:12 Finished transferring output files
+...
+005 (1229304.005.000) 2022-08-24 21:42:12 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 01:39:40, Sys 0 00:05:10  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 01:39:40, Sys 0 00:05:10  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	12266591  -  Run Bytes Sent By Job
+	736  -  Run Bytes Received By Job
+	12266591  -  Total Bytes Sent By Job
+	736  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :     1.00        1         1 
+	   Disk (KB)            : 27110           1    127803 
+	   Gpus (Average)       :     0.21        1         1 "GPU-5aaacc6f"
+	   GpusMemory (MB)      :  3554                       
+	   Memory (MB)          :  4130       16384     16384 
+
+	Job terminated of its own accord at 2022-08-24T12:42:12Z.
+...

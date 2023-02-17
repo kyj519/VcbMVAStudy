@@ -1,23 +1,26 @@
 import argparse
-from ROOT import TMVA, TString, TFile, TTree, TCut
 from subprocess import call
 import ROOT
 import os, sys
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+#######
+#BELOW CODE IS OPTIMIZED FOR TENSORFLOW-2.4.1!
+#######
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential
-from keras.layers.core import Dense, Activation, Dropout
+from tensorflow.keras.layers import Dense, Activation, Dropout
 from tensorflow.keras.layers import Add, Lambda
 from tensorflow.keras.constraints import max_norm
 #from tf.keras.layers.noise import GaussianNoise
-from keras.layers.normalization.batch_normalization import BatchNormalization
+from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras import initializers
 from tensorflow.keras import regularizers
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.optimizers import Adadelta
 from tensorflow.keras.metrics import AUC
 from tensorflow.keras.utils import plot_model
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+import sys
+sys.path.append('/data6/Users/yeonjoon/VcbMVAStudy')
 from root_data_loader import load_data, classWtoSampleW
 
 from tensorflow.keras.callbacks import EarlyStopping
@@ -58,9 +61,9 @@ varlist = [#mva_variable("n_jets", "n_jets", "#", isSpectator=True),
            mva_variable("lep_t_partial_mass",   "lep_t_partial_mass",   "GeV")
            ]
 
-varlist_prekin = ['had_t_b_pt','w_u_pt','w_d_pt','lep_t_b_pt','had_t_b_bscore','lep_t_b_bscore',
+varlist_prekin = ['pt_had_t_b','pt_w_u','pt_w_d','pt_lep_t_b','bvsc_had_t_b','bvsc_lep_t_b',
    'theta_w_u_w_d','theta_lep_neu','theta_lep_w_lep_t_b', 'del_phi_had_t_lep_t',
-   'had_t_mass','had_w_mass','lep_t_mass','lep_t_partial_mass']
+   'had_t_mass','had_w_mass','lep_t_mass','lep_t_partial_mass','pt_ratio']
 varlist = varlist_prekin + ['chi2']
 
 
@@ -103,14 +106,12 @@ class KerasModel():
     #self.model.add(Dense(32, kernel_initializer=initializers.he_normal(seed=None), activation='relu'))
     #self.model.add(Dense(2, kernel_initializer=initializers.he_normal(seed=None), activation='softmax'))
 
-  def compile(self,lossftn=BinaryCrossentropy(),
+  def compile(self,optimizer_,lossftn=BinaryCrossentropy(),
            #optimizer_=SGD(lr=0.1,decay=1e-5),
            # default lr=0.001
            #optimizer_=Adam(lr=0.1, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.1),
            #optimizer_=Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004),
-           optimizer_=Adadelta(learning_rate=1.0, rho=0.95, epsilon=None, decay=0.0, clipnorm=0.1),
-           metrics_=['AUC']
-         ):
+           metrics_=['AUC']         ):
     # Set loss and optimizer
     self.model.compile(loss=lossftn, optimizer=optimizer_, metrics=metrics_)
 
@@ -134,14 +135,19 @@ def objective_keras(trial: optuna.Trial, data):
   param = {
     'depth':trial.suggest_int('depth',3,5),
     'neuron_exponent':trial.suggest_int('neuron_exponent',3,5),
-    'rho':trial.suggest_uniform('rho',0.3,0.99),
-    'epsilon':trial.suggest_uniform('epsilon',1e-10,1e-7),
+    #'rho':trial.suggest_uniform('rho',0.3,0.99),
+    #'epsilon':trial.suggest_uniform('epsilon',1e-10,1e-7),
     'batch_size':trial.suggest_categorical('batch_size',[pow(2,i) for i in range(9,15)]),
-    'max_norm':trial.suggest_uniform('max_norm',1,10)
+    'max_norm':trial.suggest_float('max_norm',1,10)
   }
   modelDNN = KerasModel()
   modelDNN.defineModel_3layer(len(varlist_prekin) if chk_pre_kin else len(varlist),param['depth'],param['neuron_exponent'],param['max_norm'])
-  modelDNN.compile(optimizer_=Adadelta(learning_rate=1.0, rho=param['rho'], epsilon=param['epsilon'], decay=0.0, clipnorm=0.1))
+  optimizer=Adadelta(learning_rate=1.0, rho=0.95, epsilon=1e-7, clipnorm=0.1)
+  #optimizer.build(modelDNN.model.trainable_variables)
+  modelDNN.compile(optimizer_=optimizer)
+  
+  #optimizer_=Adadelta(learning_rate=1.0, rho=param['rho'], epsilon=param['epsilon'], decay=0.0, clipnorm=0.1)
+  
   EPOCHS_SIZE = 1000
   BATCH_SIZE = param['batch_size']
   early_stopping = EarlyStopping(
@@ -155,6 +161,7 @@ def objective_keras(trial: optuna.Trial, data):
   test_result = modelDNN.model.evaluate(data['test_features'],data['test_y'],batch_size=1, verbose = 0)
   print(modelDNN.model.metrics_names)
   print(test_result)
+  del modelDNN
   return test_result[1]
   
 if __name__ == '__main__':
@@ -169,32 +176,41 @@ if __name__ == '__main__':
   print(chk_pre_kin, n_jet)
   
   path_sample = os.environ["WtoCB_PATH"]
-  filename = 'Vcb_Mu_TTLJ_WtoCB_powheg_25.root'
-  
-  data =   data_dict = load_data(os.path.join(path_sample,filename),n_jet,varlist_prekin if chk_pre_kin else varlist,0.2,0.2)
-  optuna.logging.set_verbosity(optuna.logging.DEBUG)
-  study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler())
-  study.optimize(lambda trial: objective_keras(trial, data),n_trials=15)
-  fig_contour = optuna.visualization.plot_contour(study)
-  fig_importance = optuna.visualization.plot_param_importances(study)
-  fig_contour.write_html(f'opt_contour.html')
-  fig_importance.write_html(f'opt_importance.html')
-  print(f"here is the result of hyperparameter tuning, best score = {study.best_value}:\n")
-  print(study.best_trial.params)
-  param = study.best_params
+  #filename = 'Vcb_Mu_TTLJ_WtoCB_powheg_25.root'
+  filename = 'Vcb_Mu_TTLJ_WtoCB_powheg.root' 
+  data  = load_data(os.path.join(path_sample,filename),n_jet,varlist_prekin if chk_pre_kin else varlist,0.2,0.2)
+  # optuna.logging.set_verbosity(optuna.logging.DEBUG)
+  # study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler())
+  # study.optimize(lambda trial: objective_keras(trial, data),n_trials=20)
+  # fig_contour = optuna.visualization.plot_contour(study)
+  # fig_importance = optuna.visualization.plot_param_importances(study)
+  # fig_contour.write_html(f'opt_contour.html')
+  # fig_importance.write_html(f'opt_importance.html')
+  # print(f"here is the result of hyperparameter tuning, best score = {study.best_value}:\n")
+  # print(study.best_trial.params)
+  # param = study.best_params
+  param = {}
+  param['depth'] = 5
+  param['neuron_exponent'] = 4
+  param['max_norm'] = 1
+  param['batch_size'] = 2048
   modelDNN = KerasModel()
-  modelDNN.defineModel_3layer(len(varlist_prekin) if chk_pre_kin else len(varlist),param['depth'],param['neuron_exponent'])
-  modelDNN.compile(optimizer_=Adadelta(learning_rate=1.0, rho=param['rho'], epsilon=param['epsilon'], decay=0.0, clipnorm=0.1))
+  modelDNN.defineModel_3layer(len(varlist_prekin) if chk_pre_kin else len(varlist),param['depth'],param['neuron_exponent'],param['max_norm'])
+  optimizer=Adadelta(learning_rate=1.0, rho=0.95, epsilon=1e-7, clipnorm=0.1)
+  #optimizer.build(modelDNN.model.trainable_variables)
+  modelDNN.compile(optimizer_=optimizer)
+
   EPOCHS_SIZE = 1000
   BATCH_SIZE = param['batch_size']
   early_stopping = EarlyStopping(
     monitor='val_loss', 
     verbose=1,
-    patience=1,
+    patience=20,
     mode='auto',
     restore_best_weights=True)
   modelDNN.model.fit(data['train_features'],data['train_y'],epochs=EPOCHS_SIZE,batch_size=BATCH_SIZE,callbacks=[early_stopping],validation_data=(data['val_features'],data['val_y']))
   modelDNN.save()
+  modelDNN.plot_mymodel(outFile='plot.png')
   
   
 

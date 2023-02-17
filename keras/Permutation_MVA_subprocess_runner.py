@@ -3,7 +3,7 @@ from itertools import product
 import sys
 
 n_jet = [4]
-pre_kin = [0]
+pre_kin = [1]
 procs = []
 
 for tup in product(n_jet,pre_kin):

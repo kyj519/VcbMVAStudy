@@ -14,4 +14,4 @@ error = job_$(Process).err
 #preserve_relative_paths = True
 #transfer_output_files = TMVAClassification_BDTG.weights.xml
 
-queue 1
+queue 6

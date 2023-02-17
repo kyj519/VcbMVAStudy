@@ -3,12 +3,25 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+ROOT.EnableImplicitMT()
 
-def load_data(file_path, n_jet, varlist,test_ratio, val_ratio):
+def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTree):
   print(file_path)
-  data_sig = ROOT.RDataFrame('Permutation_Correct',file_path).Filter(f'n_jets=={n_jet:.0f}').AsNumpy(varlist)
-  data_bkg = ROOT.RDataFrame('Permutation_Wrong', file_path).Filter(f'n_jets=={n_jet:.0f}').AsNumpy(varlist)
+  sig_dict = []
+  bkg_dict = []
+  for tree in sigTree:
+    sig_dict.append(ROOT.RDataFrame(tree,file_path).Filter(filterstr).AsNumpy(varlist))
+  for tree in bkgTree:
+    bkg_dict.append(ROOT.RDataFrame(tree,file_path).Filter(filterstr).AsNumpy(varlist))
+  print(sig_dict)
+  data_sig = {}
+  data_bkg = {}
+  for key in sig_dict[0]:
+    data_sig[key] = np.concatenate([arr[key] for arr in sig_dict])
+  for key in bkg_dict[0]:
+    data_bkg[key] = np.concatenate([arr[key] for arr in bkg_dict])
 
+  
   sig = pd.DataFrame({k:v for k,v in data_sig.items()})
   sig['y'] = np.ones(sig.shape[0])
   bkg = pd.DataFrame({k:v for k,v in data_bkg.items()})
@@ -36,9 +49,9 @@ def load_data(file_path, n_jet, varlist,test_ratio, val_ratio):
   val_features = scaler.transform(val_features)
   test_features = scaler.transform(test_features)
   
-  train_features = np.clip(train_features, -5, 5)
-  val_features = np.clip(val_features, -5, 5)
-  test_features = np.clip(test_features, -5, 5)
+  #train_features = np.clip(train_features, -5, 5)
+  #val_features = np.clip(val_features, -5, 5)
+  #test_features = np.clip(test_features, -5, 5)
  
   
   return {'train_features': train_features, 'test_features': test_features, 'val_features': val_features
