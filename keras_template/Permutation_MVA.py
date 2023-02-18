@@ -104,7 +104,7 @@ class KerasModel():
 def objective_keras(trial: optuna.Trial, data):
   param = {
     'depth':trial.suggest_int('depth',3,5),
-    'neuron_exponent':trial.suggest_int('neuron_exponent',3,5),
+    'neuron_exponent':trial.suggest_int('neuron_exponent',3,4),
     #'rho':trial.suggest_uniform('rho',0.3,0.99),
     #'epsilon':trial.suggest_uniform('epsilon',1e-10,1e-7),
     'batch_size':trial.suggest_categorical('batch_size',[pow(2,i) for i in range(9,15)]),
@@ -126,7 +126,7 @@ def objective_keras(trial: optuna.Trial, data):
     patience=10,
     mode='max',
     restore_best_weights=True)
-  modelDNN.model.fit(data['train_features'],data['train_y'],epochs=EPOCHS_SIZE,batch_size=BATCH_SIZE,callbacks=[early_stopping],validation_data=(data['val_features'],data['val_y']))
+  modelDNN.model.fit(data['train_features'],data['train_y'],epochs=EPOCHS_SIZE,batch_size=BATCH_SIZE,callbacks=[early_stopping],validation_data=(data['val_features'],data['val_y']),class_weights=data['class_weights'])
   modelDNN.plot_mymodel(outFile=f'model_trial_{trial.number}.png')
   test_result = modelDNN.model.evaluate(data['test_features'],data['test_y'],batch_size=1, verbose = 0)
   print(modelDNN.model.metrics_names)
@@ -143,23 +143,20 @@ if __name__ == '__main__':
   filename = 'Vcb_2018_Mu_Reco_Tree.root' 
  
   data =  load_data(os.path.join(path_sample,filename), '-10.<bvsc_w_u',varlist,0.1,0.2,['Reco_45'],['Reco_43','Reco_41','Reco_23','Reco_21'])
-  # optuna.logging.set_verbosity(optuna.logging.DEBUG)
-  # study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler())
-  # study.optimize(lambda trial: objective_keras(trial, data),n_trials=20)
-  # fig_contour = optuna.visualization.plot_contour(study)
-  # fig_importance = optuna.visualization.plot_param_importances(study)
-  # fig_contour.write_html(f'opt_contour.html')
-  # fig_importance.write_html(f'opt_importance.html')
-  # print(f"here is the result of hyperparameter tuning, best score = {study.best_value}:\n")
-  # print(study.best_trial.params)
-  # param = study.best_params
-  param = {}
-  param['depth'] = 5
-  param['neuron_exponent'] = 4
-  param['max_norm'] = 1
-  param['batch_size'] = 2048
+  optuna.logging.set_verbosity(optuna.logging.DEBUG)
+  study = optuna.create_study(direction='maximize', s2ampler=optuna.samplers.TPESampler())
+  study.optimize(lambda trial: objective_keras(trial, data),n_trials=20)
+  fig_contour = optuna.visualization.plot_contour(study)
+  fig_importance = optuna.visualization.plot_param_importances(study)
+  fig_contour.write_html(f'opt_contour.html')
+  fig_importance.write_html(f'opt_importance.html')
+  print(f"here is the result of hyperparameter tuning, best score = {study.best_value}:\n")
+  print(study.best_trial.params)
+  param = study.best_params
+  
+
   modelDNN = KerasModel()
-  modelDNN.defineModel_3layer(len(varlist),param['depth'],param['neuron_exponent'],param['max_norm'])
+  modelDNN.defineModel_3layer(len(varlist),param['depth'],param['neuron_exponent'],param['max_norm'],class_weights=data['class_weights'])
   optimizer=Adadelta(learning_rate=1.0, rho=0.95, epsilon=1e-7, clipnorm=0.1)
   #optimizer.build(modelDNN.model.trainable_variables)
   modelDNN.compile(optimizer_=optimizer)
