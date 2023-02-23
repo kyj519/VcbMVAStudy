@@ -7,7 +7,7 @@ import numpy as np
 from pytorch_tabnet.tab_model import TabNetClassifier
 import torch
 import sys
-sys.path.append('/data6/Users/yeonjoon/VcbMVAStudy')
+sys.path.append(os.environ["DIR_PATH"])
 from root_data_loader import load_data, classWtoSampleW
 print(torch.cuda.is_available())
 print(torch.cuda.get_device_name(0))

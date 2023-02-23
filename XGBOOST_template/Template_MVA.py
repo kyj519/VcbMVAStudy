@@ -13,7 +13,7 @@ import xgboost
 from matplotlib import pyplot as plt
 import plotly
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-sys.path.append('/data6/Users/yeonjoon/VcbMVAStudy')
+sys.path.append(os.environ["DIR_PATH"])
 from root_data_loader import load_data, classWtoSampleW
 
 plt.ioff()

@@ -20,7 +20,7 @@ from tensorflow.keras.optimizers import Adadelta
 from tensorflow.keras.metrics import AUC
 from tensorflow.keras.utils import plot_model
 import sys
-sys.path.append('/data6/Users/yeonjoon/VcbMVAStudy')
+sys.path.append(os.environ["DIR_PATH"])
 from root_data_loader import load_data, classWtoSampleW
 
 from tensorflow.keras.callbacks import EarlyStopping
