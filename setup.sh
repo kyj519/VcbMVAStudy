@@ -1,7 +1,10 @@
 #!/bin/bash
 
 export DIR_PATH=`pwd`
-export WtoCB_PATH='/gv0/Users/yeonjoon/'
+if [`hostname`==tamsa1];then
+	export WtoCB_PATH='/gv0/Users/yeonjoon/'
+else
+	export WtoCB_PATH='root://cluster142.knu.ac.kr//store/user/yeonjoon'
 #### use cvmfs for root ####
 # export CMS_PATH=/cvmfs/cms.cern.ch
 # source $CMS_PATH/cmsset_default.sh
