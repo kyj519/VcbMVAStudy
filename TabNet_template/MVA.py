@@ -34,7 +34,7 @@ if __name__ == '__main__':
   data =  load_data(os.path.join(path_sample,filename), '-10.<bvsc_w_u',varlist,0.1,0.2,['Reco_45'],['Reco_43','Reco_41','Reco_23','Reco_21'])
   clf = TabNetClassifier()  #TabNetRegressor()
   clf.fit(
-    data['train_features'],data['train_y'],
+    X_train=data['train_features'],y_train=data['train_y'],
     eval_set=[(data['val_features'], data['val_y'])],
     eval_metric=['auc'],
     weights=data['class_weight']
