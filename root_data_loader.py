@@ -9,10 +9,15 @@ def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTre
   print(file_path)
   sig_dict = []
   bkg_dict = []
+ 
   for tree in sigTree:
-    sig_dict.append(ROOT.RDataFrame(tree,file_path).Filter(filterstr).AsNumpy(varlist))
+    df = ROOT.RDataFrame(tree,file_path)
+    df = df.Filter(filterstr)
+    sig_dict.append(df.AsNumpy(varlist))
   for tree in bkgTree:
-    bkg_dict.append(ROOT.RDataFrame(tree,file_path).Filter(filterstr).AsNumpy(varlist))
+    df = ROOT.RDataFrame(tree,file_path)
+    df = df.Filter(filterstr)
+    bkg_dict.append(df.AsNumpy(varlist))
   print(sig_dict)
   data_sig = {}
   data_bkg = {}
@@ -26,7 +31,7 @@ def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTre
   sig['y'] = np.ones(sig.shape[0])
   bkg = pd.DataFrame({k:v for k,v in data_bkg.items()})
   bkg['y'] = np.zeros(bkg.shape[0])
-  class_weights = {0:(sig.shape[0]+bkg.shape[0])/bkg.shape[0],1:(sig.shape[0]+bkg.shape[0])/sig.shape[0]}
+  class_weight = {0:(sig.shape[0]+bkg.shape[0])/bkg.shape[0],1:(sig.shape[0]+bkg.shape[0])/sig.shape[0]}
   df = pd.concat([sig,bkg],ignore_index=True)
   df = df.sample(frac=1, random_state=999)
   df = df.reset_index(drop=True)
@@ -36,7 +41,10 @@ def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTre
   train_y = np.array(train_df.pop('y').reset_index(drop=True))
   test_y = np.array(test_df.pop('y').reset_index(drop=True))
   val_y = np.array(val_df.pop('y').reset_index(drop=True))
-  
+  train_weight = np.array(train_df.pop('weight'))
+  test_df.pop('weight')
+  val_weight = np.array(val_df.pop('weight'))
+
   
   
   train_features = np.array(train_df)
@@ -48,6 +56,8 @@ def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTre
   train_features = scaler.fit_transform(train_features)
   val_features = scaler.transform(val_features)
   test_features = scaler.transform(test_features)
+
+  print(train_features)
   
   #train_features = np.clip(train_features, -5, 5)
   #val_features = np.clip(val_features, -5, 5)
@@ -55,7 +65,7 @@ def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTre
  
   
   return {'train_features': train_features, 'test_features': test_features, 'val_features': val_features
-        ,'train_y': train_y, 'test_y': test_y, 'val_y': val_y, 'class_weights':class_weights}
+        ,'train_y': train_y, 'test_y': test_y, 'val_y': val_y, 'class_weight':class_weight,'train_weight':train_weight, 'val_weight':val_weight}
   
 def classWtoSampleW(dataset,class_weights):
     weight = []

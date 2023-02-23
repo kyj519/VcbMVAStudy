@@ -190,8 +190,8 @@ if __name__ == '__main__':
   # print(study.best_trial.params)
   # param = study.best_params
   param = {}
-  param['depth'] = 5
-  param['neuron_exponent'] = 4
+  param['depth'] = 3
+  param['neuron_exponent'] = 3
   param['max_norm'] = 1
   param['batch_size'] = 2048
   modelDNN = KerasModel()

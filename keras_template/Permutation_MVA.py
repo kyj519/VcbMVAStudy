@@ -34,7 +34,7 @@ ROOT.EnableImplicitMT()
 print('training using keras')
 
 
-varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets']
+varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight']
 
 
 
@@ -144,19 +144,26 @@ if __name__ == '__main__':
  
   data =  load_data(os.path.join(path_sample,filename), '-10.<bvsc_w_u',varlist,0.1,0.2,['Reco_45'],['Reco_43','Reco_41','Reco_23','Reco_21'])
   optuna.logging.set_verbosity(optuna.logging.DEBUG)
-  study = optuna.create_study(direction='maximize', s2ampler=optuna.samplers.TPESampler())
-  study.optimize(lambda trial: objective_keras(trial, data),n_trials=20)
-  fig_contour = optuna.visualization.plot_contour(study)
-  fig_importance = optuna.visualization.plot_param_importances(study)
-  fig_contour.write_html(f'opt_contour.html')
-  fig_importance.write_html(f'opt_importance.html')
-  print(f"here is the result of hyperparameter tuning, best score = {study.best_value}:\n")
-  print(study.best_trial.params)
-  param = study.best_params
+  #study = optuna.create_study(direction='maximize', s2ampler=optuna.samplers.TPESampler())
+  #study.optimize(lambda trial: objective_keras(trial, data),n_trials=20)
+  #fig_contour = optuna.visualization.plot_contour(study)
+  #fig_importance = optuna.visualization.plot_param_importances(study)
+  #fig_contour.write_html(f'opt_contour.html')
+  #fig_importance.write_html(f'opt_importance.html')
+  #print(f"here is the result of hyperparameter tuning, best score = {study.best_value}:\n")
+  #print(study.best_trial.params)
+  #param = study.best_params
   
+  param = {}
+  param['activation'] = 'elu'
+  param['optimizer'] = False
+  param['batch_size'] = 512
+  param['neuron_exponent'] = 4
+  param['depth'] = 16
+  param['max_norm'] = 2
 
   modelDNN = KerasModel()
-  modelDNN.defineModel_3layer(len(varlist),param['depth'],param['neuron_exponent'],param['max_norm'],class_weights=data['class_weights'])
+  modelDNN.defineModel_3layer(len(varlist)-1,param['depth'],param['neuron_exponent'],param['max_norm'])
   optimizer=Adadelta(learning_rate=1.0, rho=0.95, epsilon=1e-7, clipnorm=0.1)
   #optimizer.build(modelDNN.model.trainable_variables)
   modelDNN.compile(optimizer_=optimizer)
@@ -169,7 +176,11 @@ if __name__ == '__main__':
     patience=20,
     mode='auto',
     restore_best_weights=True)
-  modelDNN.model.fit(data['train_features'],data['train_y'],epochs=EPOCHS_SIZE,batch_size=BATCH_SIZE,callbacks=[early_stopping],validation_data=(data['val_features'],data['val_y']))
+  modelDNN.model.fit(data['train_features'],data['train_y'],
+                     epochs=EPOCHS_SIZE,batch_size=BATCH_SIZE,
+                     callbacks=[early_stopping],
+                     validation_data=(data['val_features'],data['val_y']),
+                     class_weight=data['class_weight'])
   modelDNN.save('/data6/Users/yeonjoon/VcbMVAStudy/keras_template/model.h5')
   modelDNN.plot_mymodel(outFile='plot.png')
   
