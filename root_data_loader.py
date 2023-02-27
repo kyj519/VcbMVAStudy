@@ -3,10 +3,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import LabelEncoder
+
 ROOT.EnableImplicitMT()
 
-def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTree):
-  print(file_path)
+def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTree,makeStandard=False, useLabelEncoder = True):
   sig_dict = []
   bkg_dict = []
  
@@ -18,7 +19,6 @@ def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTre
     df = ROOT.RDataFrame(tree,file_path)
     df = df.Filter(filterstr)
     bkg_dict.append(df.AsNumpy(varlist))
-  print(sig_dict)
   data_sig = {}
   data_bkg = {}
   for key in sig_dict[0]:
@@ -41,23 +41,41 @@ def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTre
   train_y = np.array(train_df.pop('y').reset_index(drop=True))
   test_y = np.array(test_df.pop('y').reset_index(drop=True))
   val_y = np.array(val_df.pop('y').reset_index(drop=True))
+  
+  nunique = train_df.nunique()
+  types = train_df.dtypes
+  print(types)
+  categorical_columns = []
+  categorical_dims =  {}
+  if useLabelEncoder:
+    for col in train_df.columns:
+        if nunique[col] < 200:
+            print(col, train_df[col].nunique())
+            l_enc = LabelEncoder()
+            train_df[col] = l_enc.fit_transform(train_df[col].values)
+            val_df[col] = l_enc.fit_transform(val_df[col].values)
+            categorical_columns.append(col)
+            categorical_dims[col] = len(l_enc.classes_)
+        
+
+  features = [ col for col in train_df.columns] 
+  cat_idxs = [ i for i, f in enumerate(features) if f in categorical_columns]
+  cat_dims = [ categorical_dims[f] for i, f in enumerate(features) if f in categorical_columns]
+  
   train_weight = np.array(train_df.pop('weight'))
   test_df.pop('weight')
   val_weight = np.array(val_df.pop('weight'))
-
   
-  
-  train_features = np.array(train_df)
-  test_features = np.array(test_df)
-  val_features = np.array(val_df)
-
+  train_features = np.array(train_df.values)
+  test_features = np.array(test_df.values)
+  val_features = np.array(val_df.values)
+  print(train_features[0])
   scaler = StandardScaler()
+  if makeStandard:
+    train_features = scaler.fit_transform(train_features)
+    val_features = scaler.transform(val_features)
+    test_features = scaler.transform(test_features)
 
-  train_features = scaler.fit_transform(train_features)
-  val_features = scaler.transform(val_features)
-  test_features = scaler.transform(test_features)
-
-  print(train_features)
   
   #train_features = np.clip(train_features, -5, 5)
   #val_features = np.clip(val_features, -5, 5)
@@ -65,11 +83,12 @@ def load_data(file_path, filterstr, varlist,test_ratio, val_ratio,sigTree,bkgTre
  
   
   return {'train_features': train_features, 'test_features': test_features, 'val_features': val_features
-        ,'train_y': train_y, 'test_y': test_y, 'val_y': val_y, 'class_weight':class_weight,'train_weight':train_weight, 'val_weight':val_weight}
+        ,'train_y': train_y, 'test_y': test_y, 'val_y': val_y,
+        'class_weight':class_weight,'train_weight':train_weight, 'val_weight':val_weight
+        ,'cat_idxs':cat_idxs,'cat_dims':cat_dims}
   
 def classWtoSampleW(dataset,class_weights):
     weight = []
-    print(dataset)
     for class_data in dataset:
         weight.append(class_weights[class_data])
     return np.array(weight)
