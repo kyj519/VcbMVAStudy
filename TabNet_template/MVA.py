@@ -30,9 +30,13 @@ if __name__ == '__main__':
   #filename = 'Vcb_Mu_TTLJ_WtoCB_powheg_25.root'
   filename = 'Vcb_2018_Mu_Reco_Tree.root' 
   #,'Reco_41','Reco_23','Reco_21'
-  data =  load_data(os.path.join(path_sample,filename), '-10.<bvsc_w_u',varlist,0.1,0.2,['Reco_45'],['Reco_43','Reco_41'])
+  data =  load_data(file_path=os.path.join(path_sample,filename),varlist=varlist,test_ratio=0,val_ratio=0.2,sigTree=['Reco_45'],bkgTree=['Reco_43','Reco_41','Reco_23','Reco_21'])
+  from pytorch_tabnet.augmentations import ClassificationSMOTE
+  aug = ClassificationSMOTE(p=0.5)
+
   print("file loaded")
   print(data['cat_idxs'],data['cat_dims']) 
+  print(data['train_y'])
   clf = TabNetClassifier(
     verbose=1,
     cat_idxs=data['cat_idxs'],
@@ -45,12 +49,13 @@ if __name__ == '__main__':
     eval_metric=['auc'],
     patience=20,
     #weights=data['class_weight']
-    weights=1,
-    batch_size=1024,
+    weights=0,
+    batch_size=4098,
+    augmentations=aug
     #callbacks=[pytorch_tabnet.callbacks.History(clf,verbose=1)]
   )
   #preds = clf.predict(data['test_features'])
-  clf.save_model('/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/model.pt'))
+  clf.save_model('/cms/ldap_home/yeonjoon/working_dir/VcbMVAStudy/TabNet_template/model.pt')
   
   
 

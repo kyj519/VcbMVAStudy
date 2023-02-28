@@ -2,7 +2,7 @@ import os, sys
 import numpy as np
 print(np.__file__)
 from pytorch_tabnet.tab_model import TabNetClassifier
-
+from copy import deepcopy
 import torch
 print(torch.__file__)
 
@@ -30,9 +30,8 @@ if __name__ == '__main__':
   path_sample = os.environ["WtoCB_PATH"]
   filename = 'Vcb_Mu_TTLJ_WtoCB_powheg.root'
   #,'Reco_41','Reco_23','Reco_21'
-  data =  load_data(os.path.join(path_sample,filename), 'n_jets==4',varlist,0.1,0.2,['Permutation_Correct'],['Permutation_Wrong'])
+  data = load_data(file_path=os.path.join(path_sample,filename),filterstr='n_jets==4',varlist=varlist,val_ratio=0.2,test_ratio=0,sigTree=['Permutation_Correct'],bkgTree=['Permutation_Wrong'])
   print("file loaded")
-  print(data['cat_idxs'],data['cat_dims']) 
   clf = TabNetClassifier(
     verbose=1,
     cat_idxs=data['cat_idxs'],
@@ -49,7 +48,7 @@ if __name__ == '__main__':
     patience=20
     #callbacks=[pytorch_tabnet.callbacks.History(clf,verbose=1)]
   )
-  clf.save_model('/data6/Users/yeonjoon/VcbMVAStudy/TabNet_Permutation/model.pt')
+  clf.save_model('/cms/ldap_home/yeonjoon/working_dir/VcbMVAStudy/TabNet_Permutation/model.pt')
   
   
 
