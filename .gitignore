@@ -13,3 +13,4 @@ lib/*.tar.gz
 *.json
 *.xml
 *.root
+*.zip

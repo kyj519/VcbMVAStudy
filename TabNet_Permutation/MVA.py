@@ -19,7 +19,7 @@ print(device)
 
 
 
-varlist = varlist_prekin = ['pt_had_t_b','pt_w_u','pt_w_d','pt_lep_t_b','bvsc_had_t_b','bvsc_lep_t_b',
+varlist = ['pt_had_t_b','pt_w_u','pt_w_d','pt_lep_t_b','bvsc_had_t_b','bvsc_lep_t_b',
    'theta_w_u_w_d','theta_lep_neu','theta_lep_w_lep_t_b', 'del_phi_had_t_lep_t',
    'had_t_mass','had_w_mass','lep_t_mass','lep_t_partial_mass','pt_ratio','chi2','weight']
   

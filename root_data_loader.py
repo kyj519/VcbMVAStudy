@@ -8,6 +8,7 @@ from copy import deepcopy
 ROOT.EnableImplicitMT()
 
 def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0.2,sigTree=[],bkgTree=[],makeStandard=False, useLabelEncoder = True):
+  print(file_path)
   sig_dict = []
   bkg_dict = []
  
@@ -23,29 +24,36 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
   data_bkg = {}
   for key in sig_dict[0]:
     data_sig[key] = np.concatenate([arr[key] for arr in sig_dict])
-  for key in bkg_dict[0]:
-    data_bkg[key] = np.concatenate([arr[key] for arr in bkg_dict])
+  if len(bkg_dict) != 0:
+    for key in bkg_dict[0]:
+      data_bkg[key] = np.concatenate([arr[key] for arr in bkg_dict])
 
   
   sig = pd.DataFrame({k:v for k,v in data_sig.items()})
   sig['y'] = np.ones(sig.shape[0])
-  bkg = pd.DataFrame({k:v for k,v in data_bkg.items()})
-  bkg['y'] = np.zeros(bkg.shape[0])
-  class_weight = {0:(sig.shape[0]+bkg.shape[0])/bkg.shape[0],1:(sig.shape[0]+bkg.shape[0])/sig.shape[0]}
-  df = pd.concat([sig,bkg],ignore_index=True)
-  df = df.sample(frac=1, random_state=999)
+  class_weight={}
+  if len(bkg_dict) != 0:
+    bkg = pd.DataFrame({k:v for k,v in data_bkg.items()})
+    bkg['y'] = np.zeros(bkg.shape[0])
+    class_weight = {0:(sig.shape[0]+bkg.shape[0])/bkg.shape[0],1:(sig.shape[0]+bkg.shape[0])/sig.shape[0]}
+    df = pd.concat([sig,bkg],ignore_index=True)
+  else:
+    df = pd.DataFrame(sig)
   df = df.reset_index(drop=True)
   
   np.random.seed(42)
-  
-  if test_ratio == 0:
+  if val_ratio == 0 and test_ratio == 0:
+    print("Full dataset, For validation")
+    df["Set"] = np.random.choice(["train"], p =[1.], size=(df.shape[0],))
+  elif test_ratio == 0 and val_ratio != 0:
     df["Set"] = np.random.choice(["train", "val"], p =[1. - (val_ratio+test_ratio), val_ratio], size=(df.shape[0],))
   else:
     df["Set"] = np.random.choice(["train", "val", "test"], p =[1. - (val_ratio+test_ratio), val_ratio, test_ratio], size=(df.shape[0],))
+  
   train_indices = df[df.Set=="train"].index
   val_indices = df[df.Set=="val"].index
   test_indices = df[df.Set=="test"].index
-  
+  print(df)
   unused_feat = ['Set', 'weight']
   target = 'y' 
 

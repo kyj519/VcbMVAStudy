@@ -20,7 +20,11 @@ print(device)
 
 
 varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight']
-
+# varlist.extend(['n_jets',
+#                 'pt_had_t_b','pt_w_u','pt_w_d','pt_lep_t_b',
+#                 'eta_had_t_b','eta_w_u','eta_w_d','eta_lep_t_b',
+#                 'bvsc_lep_t_b','bvsc_had_t_b',
+#                 'm_w_u','m_w_d'])
   
 if __name__ == '__main__':
 
@@ -38,6 +42,8 @@ if __name__ == '__main__':
   print(data['cat_idxs'],data['cat_dims']) 
   print(data['train_y'])
   clf = TabNetClassifier(
+    n_d=16,
+    n_a=16,
     verbose=1,
     cat_idxs=data['cat_idxs'],
     cat_dims=data['cat_dims'],
@@ -47,10 +53,10 @@ if __name__ == '__main__':
     X_train=data['train_features'],y_train=data['train_y'],
     eval_set=[(data['val_features'], data['val_y'])],
     eval_metric=['auc'],
-    patience=20,
+    patience=5,
     #weights=data['class_weight']
     weights=0,
-    batch_size=4098,
+    batch_size=8192*4,
     augmentations=aug
     #callbacks=[pytorch_tabnet.callbacks.History(clf,verbose=1)]
   )
