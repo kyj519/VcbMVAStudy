@@ -37,7 +37,7 @@ def objective(trial: optuna.Trial, data):
   }
   param_model['n_a'] = param_model['n_d']
   param_fit = {
-    'batch_size':trial.suggest_categorical('batch_size',[pow(2,i) for i in [12,13,14,15]])
+    'batch_size':trial.suggest_categorical('batch_size',[pow(2,i) for i in [17,18,19,20]])
   }
   print(param_model)
   print(param_fit)
@@ -74,8 +74,8 @@ if __name__ == '__main__':
   #,'Reco_41','Reco_23','Reco_21'
   data =  load_data(file_path=os.path.join(path_sample,filename),varlist=varlist,test_ratio=0,val_ratio=0.2,sigTree=['Reco_45'],bkgTree=['Reco_43','Reco_41','Reco_23','Reco_21'])
   optuna.logging.set_verbosity(optuna.logging.DEBUG)
-  study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler())
-  study.optimize(lambda trial: objective(trial, data) ,n_trials=50,n_jobs=4)
+  study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(), study_name="dist", storage='/cms/ldap_home/yeonjoon/working_dir/VcbMVAStudy/TabNet_template/study')
+  study.optimize(lambda trial: objective(trial, data) ,n_trials=100,n_jobs=1)
   print(f"here is the result of hyperparameter tuning, best score = {study.best_value}:\n")
   print(study.best_trial.params)
   print("file loaded")

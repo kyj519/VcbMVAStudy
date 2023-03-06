@@ -1,0 +1,15 @@
+universe   = vanilla
+executable =  MVA_optuna.sh
+jobbatchname = Vcb_Template_optuna
+log = condor.log
+getenv     = True
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+request_memory = 8192*2
+request_cpus = 4
+arguments  = $(Process)
+output = job_$(Process).log
+error = job_$(Process).err
+
+
+queue 10

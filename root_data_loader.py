@@ -53,26 +53,24 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
   train_indices = df[df.Set=="train"].index
   val_indices = df[df.Set=="val"].index
   test_indices = df[df.Set=="test"].index
-  print(df)
   unused_feat = ['Set', 'weight']
   target = 'y' 
 
   nunique = df.nunique()
   types = df.dtypes
-  print(types)
   categorical_columns = []
   categorical_dims =  {}
+  categorical_labelencoder = {}
   if useLabelEncoder:
     for col in df.columns:
       if col == target or col in unused_feat:
         continue
       if nunique[col] < 200:
-          print(col, df[col].nunique())
           l_enc = LabelEncoder()
           df[col] = l_enc.fit_transform(df[col].values)
           categorical_columns.append(col)
           categorical_dims[col] = len(l_enc.classes_)
-        
+          categorical_labelencoder[col] = l_enc
 
   
   features = [ col for col in df.columns if col not in unused_feat+[target]] 
@@ -107,8 +105,8 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
  
   data =  {'train_features': train_features, 'test_features': test_features, 'val_features': val_features
         ,'train_y': train_y, 'test_y': test_y, 'val_y': val_y,
-        'class_weight':class_weight,'train_weight':train_weight, 'val_weight':val_weight
-        ,'cat_idxs':cat_idxs,'cat_dims':cat_dims}
+        'class_weight':class_weight,'train_weight':train_weight, 'val_weight':val_weight, 'test_weight':test_weight
+        ,'cat_idxs':cat_idxs,'cat_dims':cat_dims, 'cat_columns':categorical_columns, 'cat_labelencoder':categorical_labelencoder}
   
   return data
   
