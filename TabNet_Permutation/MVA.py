@@ -42,19 +42,29 @@ if __name__ == '__main__':
     cat_dims=data['cat_dims'],
     cat_emb_dim=2
     )  
+  clf = TabNetClassifier(
+    n_d=32,
+    n_a=32,
+    verbose=1,
+    cat_idxs=deepcopy(data['cat_idxs']),
+    cat_dims=deepcopy(data['cat_dims']),
+    cat_emb_dim=3,
+    n_steps=5
+    )  
   clf.fit(
     X_train=data['train_features'],y_train=data['train_y'],
     eval_set=[(data['val_features'], data['val_y'])],
     eval_metric=['auc'],
     #weights=data['class_weight']
-    batch_size=4096,
+    batch_size=pow(2,17),
     virtual_batch_size=256,
     num_workers=4,
-    augmentations=aug,
-    patience=10
+    weights=1,
+    #augmentations=aug,
+    patience=50
     #callbacks=[pytorch_tabnet.callbacks.History(clf,verbose=1)]
   )
-  clf.save_model('/cms/ldap_home/yeonjoon/working_dir/VcbMVAStudy/TabNet_Permutation/model.pt')
+  clf.save_model(os.path.join(os.environ["DIR_PATH"],'TabNet_Permutation/model.pt'))
   y= clf.predict_proba(data['test_features'])[:,1]
   fpr, tpr, _ = roc_curve(data['test_y'], y)
   auc_val = auc(fpr,tpr)

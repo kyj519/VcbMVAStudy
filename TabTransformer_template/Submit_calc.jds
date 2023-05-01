@@ -1,0 +1,14 @@
+universe   = vanilla
+executable = calc.sh
+jobbatchname = Vcb_Template_TabNet_calc
+log = condor.log
+getenv     = True
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+request_memory = 8192*4
+request_cpus = 12
+request_gpus = 1
+output = job_calc2.log
+error = job_calc2.err
+
+queue 1

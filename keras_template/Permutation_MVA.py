@@ -19,7 +19,7 @@ from tensorflow.keras.optimizers import Adadelta, SGD
 from tensorflow.keras.metrics import AUC
 from tensorflow.keras.utils import plot_model
 import sys
-sys.path.append(os.environ['WORK_DIR'])
+sys.path.append(os.environ['DIR_PATH'])
 from root_data_loader import load_data, classWtoSampleW
 
 from tensorflow.keras.callbacks import EarlyStopping
@@ -34,11 +34,11 @@ print('training using keras')
 
 
 varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight']
-varlist.extend(['m_w_u','m_w_d',
-                'eta_w_d','eta_w_u','eta_had_t_b','eta_lep_t_b',
-                'bvsc_lep_t_b','bvsc_had_t_b',
-                'pt_lep_t_b','pt_w_d','pt_had_t_b','pt_w_u',
-                'best_mva_score','n_jets'])
+# varlist.extend(['m_w_u','m_w_d',
+#                 'eta_w_d','eta_w_u','eta_had_t_b','eta_lep_t_b',
+#                 'bvsc_lep_t_b','bvsc_had_t_b',
+#                 'pt_lep_t_b','pt_w_d','pt_had_t_b','pt_w_u',
+#                 'best_mva_score','n_jets'])
 
   
 gpus = tf.config.list_logical_devices('GPU')
@@ -191,6 +191,7 @@ if __name__ == '__main__':
   #filename = 'Vcb_Mu_TTLJ_WtoCB_powheg_25.root'
   filename = 'Vcb_2018_Mu_Reco_Tree.root' 
  
+
   data =  load_data(os.path.join(path_sample,filename), '-10.<bvsc_w_u',varlist,0.1,0.2,['Reco_45'],['Reco_43','Reco_41','Reco_23','Reco_21'])
   # optuna.logging.set_verbosity(optuna.logging.DEBUG)
   # study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler())
@@ -207,8 +208,8 @@ if __name__ == '__main__':
   param['activation'] = 'elu'
   param['optimizer'] = False
   param['batch_size'] = 4096
-  param['neuron_exponent'] = 4
-  param['depth'] = 36
+  param['neuron_exponent'] = 8
+  param['depth'] = 8
   param['max_norm'] = 2
   with mirrored_strategy.scope():
     modelDNN=Sequential()
@@ -243,7 +244,7 @@ if __name__ == '__main__':
     early_stopping = EarlyStopping(
       monitor='val_auc', 
       verbose=1,
-      patience=5,
+      patience=50,
       mode='auto',
       restore_best_weights=True)
     modelDNN.fit(data['train_features'],data['train_y'],
@@ -252,10 +253,11 @@ if __name__ == '__main__':
                  validation_data=(data['val_features'],data['val_y']),
                  class_weight=data['class_weight']) 
     
+  modelDNN.save('/data6/Users/yeonjoon/VcbMVAStudy/keras_template/model_best.h5')
   test_result = modelDNN.evaluate(data['test_features'],data['test_y'],batch_size=1, verbose = 0)
   print(modelDNN.model.metrics_names)
   print(test_result) 
-  modelDNN.save('/u/user/yeonjoon/working_dir/VcbMVAStudy/keras_template/model_best.h5')
+  
   modelDNN.plot_mymodel(outFile='plot.png')
   
   

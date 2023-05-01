@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python3 /data6/Users/yeonjoon/VcbMVAStudy/keras_template/calc.py
+python3 -u /data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/calc.py

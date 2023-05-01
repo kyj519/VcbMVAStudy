@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.preprocessing import LabelEncoder
 from copy import deepcopy
-ROOT.EnableImplicitMT()
+ROOT.EnableImplicitMT(32)
 
 def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0.2,sigTree=[],bkgTree=[],makeStandard=False, useLabelEncoder = True):
   print(file_path)
@@ -35,7 +35,6 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
   if len(bkg_dict) != 0:
     bkg = pd.DataFrame({k:v for k,v in data_bkg.items()})
     bkg['y'] = np.zeros(bkg.shape[0])
-    class_weight = {0:(sig.shape[0]+bkg.shape[0])/bkg.shape[0],1:(sig.shape[0]+bkg.shape[0])/sig.shape[0]}
     df = pd.concat([sig,bkg],ignore_index=True)
   else:
     df = pd.DataFrame(sig)
@@ -49,11 +48,29 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
     df["Set"] = np.random.choice(["train", "val"], p =[1. - (val_ratio+test_ratio), val_ratio], size=(df.shape[0],))
   else:
     df["Set"] = np.random.choice(["train", "val", "test"], p =[1. - (val_ratio+test_ratio), val_ratio, test_ratio], size=(df.shape[0],))
+ 
+  if not(val_ratio == 0 and test_ratio == 0):
+    print("Training mode, eliminate negative weight sample")
+    df = df[df['weight'] >= 0]
   
+  df = df.reset_index(drop=True)
+  # calculate class weights
+  sig_idx = df[df['y']==1].index
+  bkg_idx = df[df['y']==0].index
+  total_samples = df['weight'].sum()
+  print(total_samples)
+  print(df['weight'].values[bkg_idx].sum())
+  print(df['weight'].values[sig_idx].sum())
+  class_weight = {
+      0: total_samples / df['weight'].values[bkg_idx].sum(),
+      1: total_samples / df['weight'].values[sig_idx].sum()
+  }
+  df['sample_and_class_weight'] = df.apply(lambda row: row['weight'] * class_weight[row['y']], axis=1)
+    
   train_indices = df[df.Set=="train"].index
   val_indices = df[df.Set=="val"].index
   test_indices = df[df.Set=="test"].index
-  unused_feat = ['Set', 'weight']
+  unused_feat = ['Set', 'weight','sample_and_class_weight']
   target = 'y' 
 
   nunique = df.nunique()
@@ -89,9 +106,11 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
   train_weight = np.array(df['weight'].values[train_indices])
   val_weight = np.array(df['weight'].values[val_indices])
   test_weight = np.array(df['weight'].values[test_indices])
-  
-
-  print(train_features[0])
+   
+  train_sample_and_class_weight = np.array(df['sample_and_class_weight'].values[train_indices])
+  val_sample_and_class_weight = np.array(df['sample_and_class_weight'].values[val_indices])
+  test_sample_and_class_weight = np.array(df['sample_and_class_weight'].values[test_indices])
+  print(df)
   scaler = StandardScaler()
   if makeStandard:
     train_features = scaler.fit_transform(train_features)
@@ -106,7 +125,9 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
   data =  {'train_features': train_features, 'test_features': test_features, 'val_features': val_features
         ,'train_y': train_y, 'test_y': test_y, 'val_y': val_y,
         'class_weight':class_weight,'train_weight':train_weight, 'val_weight':val_weight, 'test_weight':test_weight
-        ,'cat_idxs':cat_idxs,'cat_dims':cat_dims, 'cat_columns':categorical_columns, 'cat_labelencoder':categorical_labelencoder}
+        ,'cat_idxs':cat_idxs,'cat_dims':cat_dims, 'cat_columns':categorical_columns, 'cat_labelencoder':categorical_labelencoder,
+        'train_sample_and_class_weight':train_sample_and_class_weight,'val_sample_and_class_weight':val_sample_and_class_weight,
+        'test_sample_and_class_weight':test_sample_and_class_weight}
   
   return data
   
