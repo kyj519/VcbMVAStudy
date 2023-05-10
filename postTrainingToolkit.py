@@ -252,7 +252,7 @@ def Draw_KS_test(train_score,val_score,plotPath="img.png",isSig=True,kol=0):
 
     trace3 = go.Scatter(x=[x1, x2], y=[y1, y2], mode="lines", name="KS test")
 
-    title = f"Signal, dist={dist}" if isSig else f"Bkg., dist={dist}"
+    title = f"Signal, dist={dist}, kol={kol}" if isSig else f"Bkg., dist={dist}, kol={kol}"
     layout = go.Layout(
         title=title,
         xaxis=dict(title="Score"),

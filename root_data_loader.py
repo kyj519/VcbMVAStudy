@@ -7,17 +7,28 @@ from sklearn.preprocessing import LabelEncoder
 from copy import deepcopy
 ROOT.EnableImplicitMT(32)
 
-def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0.2,sigTree=[],bkgTree=[],makeStandard=False, useLabelEncoder = True):
-  print(file_path)
+def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0.2,sigTree=[],bkgTree=[],dirName=None,makeStandard=False, useLabelEncoder = True):
+  print(varlist)
   sig_dict = []
   bkg_dict = []
- 
+  f = ROOT.TFile(file_path,"READ")
+  
+    
+  
   for tree in sigTree:
-    df = ROOT.RDataFrame(tree,file_path)
+    if dirName is not None:
+      tr = f.Get(dirName+"/"+tree)
+    else:
+      tr = f.Get(tree)
+    df = ROOT.RDataFrame(tr)
     df = df if filterstr=="" else df.Filter(filterstr) 
     sig_dict.append(df.AsNumpy(varlist))
   for tree in bkgTree:
-    df = ROOT.RDataFrame(tree,file_path)
+    if dirName is not None:
+      tr = f.Get(dirName+"/"+tree)
+    else:
+      tr = f.Get(tree)
+    df = ROOT.RDataFrame(tr)
     df = df if filterstr=="" else df.Filter(filterstr) 
     bkg_dict.append(df.AsNumpy(varlist))
   data_sig = {}
@@ -38,8 +49,12 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
     df = pd.concat([sig,bkg],ignore_index=True)
   else:
     df = pd.DataFrame(sig)
+
   df = df.reset_index(drop=True)
-  
+ 
+  if 'weight' not in df.columns:
+    # Add 'weight' column and fill with 1
+    df['weight'] = 1 
   np.random.seed(42)
   if val_ratio == 0 and test_ratio == 0:
     print("Full dataset, For validation")
@@ -52,6 +67,18 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
   if not(val_ratio == 0 and test_ratio == 0):
     print("Training mode, eliminate negative weight sample")
     df = df[df['weight'] >= 0]
+  
+  
+  
+  #######################
+  #TEMPORARY HARDCODED!!!
+  ########################
+  df.loc[df['n_bjets'] > 7, 'a'] = 7
+  df.loc[df['n_cjets'] > 11, 'a'] = 11
+  
+  
+  
+  
   
   df = df.reset_index(drop=True)
   # calculate class weights
@@ -110,7 +137,6 @@ def load_data(file_path="", filterstr="", varlist=[],test_ratio=0.1, val_ratio=0
   train_sample_and_class_weight = np.array(df['sample_and_class_weight'].values[train_indices])
   val_sample_and_class_weight = np.array(df['sample_and_class_weight'].values[val_indices])
   test_sample_and_class_weight = np.array(df['sample_and_class_weight'].values[test_indices])
-  print(df)
   scaler = StandardScaler()
   if makeStandard:
     train_features = scaler.fit_transform(train_features)

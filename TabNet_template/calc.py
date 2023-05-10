@@ -8,7 +8,7 @@ sys.path.append(os.environ["DIR_PATH"])
 ROOT.EnableImplicitMT(16)
 from root_data_loader import load_data
 model = TabNetClassifier()
-folder_path = '/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/model_KPS_balancedAccu_Nsteps10'
+folder_path = '/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/model_KPS_balancedAccu'
 files = os.listdir(folder_path)
 # Filter for files with a .pt.zip extension
 pt_zip_files = [f for f in files if f.endswith('.pt.zip')]
@@ -80,6 +80,8 @@ train_score = model.predict_proba(data['train_features'])[:,1]
 val_score = model.predict_proba(data['val_features'])[:,1]
 kolS, kolB = postTrainingToolkit.KS_test(train_score,val_score,data['train_weight'],data['val_weight'],data['train_y'],data['val_y'],plotPath=folder_path)
 print(f'{kolS}, {kolB}')
+
+sys.exit()
 
 res_explain, res_masks = model.explain(data['train_features'])
 np.save(os.path.join(folder_path,'explain.npy'), res_explain)

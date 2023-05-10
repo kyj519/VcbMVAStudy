@@ -6,7 +6,7 @@ import torch
 from copy import deepcopy
 from sklearn.metrics import mean_squared_error
 from pytorch_tabnet.metrics import Metric
-
+import tqdm
 
 sys.path.append(os.environ["DIR_PATH"])
 from root_data_loader import load_data, classWtoSampleW
@@ -32,10 +32,7 @@ varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
            'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
            ,'pt_w_u','pt_w_d','eta_w_u','eta_w_d','best_mva_score']
 #
-varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
-           'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
-           #,'pt_w_u','pt_w_d','eta_w_u','eta_w_d'
-           ,'best_mva_score']
+
 
 def train(input_root_file, model_save_path, doSmote=False):
   
@@ -136,22 +133,65 @@ def plot(input_root_file,input_model_path,out_path):
   np.save(os.path.join(out_path,'y.npy'),data['train_y'])
 
 def infer(input_root_file,input_model_path):
-  import ROOT
+  import array, ROOT
+  print(f'infering started for file {input_root_file}')
   model = TabNetClassifier()
   model.load_model(input_model_path)
-  modelist = ['45','43','41','23','21']
-  mva_scores={}
-  for mode in modelist:
-    data =  load_data(file_path=input_root_file,varlist=varlist,test_ratio=0,val_ratio=0,sigTree=[f'Reco_{mode}'],bkgTree=[])
-    arr = data['train_features']
-    weights = data['train_weight']
-    pred = model.predict_proba(arr)[:,1]
-    mva_scores[mode] = pred
-    del data
-    del arr
-    del weights
+  f = ROOT.TFile(input_root_file, "READ")
+  dirName = f.GetListOfKeys()[0].ReadObj().GetName()
+  trName = dirName + '/Result_Tree'
+  print(trName)
+  f.Close()
+  varlist.remove('weight')
 
+  data =  load_data(file_path=input_root_file,varlist=varlist,test_ratio=0,val_ratio=0,sigTree=["Result_Tree"],bkgTree=[],dirName=dirName)
+  arr = data['train_features']
+  weights = data['train_weight']
+  print(arr)
+  pred = model.predict_proba(arr)[:,1]
+
+
+  # Open the ROOT file
+  file = ROOT.TFile(input_root_file, "UPDATE")
+  file.cd(dirName)
+  # Get the TTree from the file
+  tree = file.Get(dirName+"/Result_Tree")
+
+  # Create a new branch in the tree
+  new_branch_name = "template_MVA_score"
+  new_branch_value = array.array('d', [0.])
+  new_branch = tree.Branch(new_branch_name, new_branch_value, new_branch_name+"/D")
   
+  # Create a numpy array to be written to the branch
+  array_to_write = pred
+
+  # Loop over the entries in the tree and write the array to the branch
+  print('infering done. start writing.....')
+  for i in tqdm.tqdm(range(tree.GetEntries())):
+      tree.GetEntry(i)
+      new_branch_value[0] = array_to_write[i]
+      new_branch.Fill()
+
+  # Write the updated TTree to the file and close it
+  tree.Write("", ROOT.TObject.kOverwrite)
+  file.Close()
+  
+
+
+def infer_with_iter(input_folder,input_model_path):
+  eras = ['2018','2017','2016preVFP','2016postVFP']
+  chs = ['Mu','El','EE','MM','ME']
+  for era in eras:
+    for ch in chs:
+      if not os.path.isdir(os.path.join(input_folder,era,ch,'RunResult')):
+        continue
+      systs=os.listdir(os.path.join(input_folder,era,ch,'RunResult'))
+      #to select directory only
+      systs=[f for f in systs if not '.' in f]
+      for syst in systs:
+       files = [os.path.join(input_folder,era,ch,'RunResult',syst,f) for f in os.listdir(os.path.join(input_folder,era,ch,'RunResult',syst))]
+       for file in files:
+         infer(file,input_model_path)
   
   
 if __name__ == '__main__':
@@ -180,10 +220,12 @@ if __name__ == '__main__':
 
   elif args.working_mode== 'plot':
       print('Plotting Mode')
-      plot(args.input_root_file,args.input_model_path,args.out_path)
+      plot(args.input_root_file,args.input_model,args.out_path)
       # Add code for mode 2 here
   elif args.working_mode == 'infer':
-      print('Inffering Mode mode 3')
+      print('Inffering Mode')
+      infer_with_iter(args.input_root_file,args.input_model)
+      #infer(args.input_root_file,args.input_model)
       # Add code for mode 3 here
   else:
     print('Wrong working mode')
