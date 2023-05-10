@@ -142,7 +142,8 @@ def infer(input_root_file,input_model_path):
   trName = dirName + '/Result_Tree'
   print(trName)
   f.Close()
-  varlist.remove('weight')
+  if 'weight' in varlist:
+    varlist.remove('weight')
 
   data =  load_data(file_path=input_root_file,varlist=varlist,test_ratio=0,val_ratio=0,sigTree=["Result_Tree"],bkgTree=[],dirName=dirName)
   arr = data['train_features']
