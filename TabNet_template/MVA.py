@@ -28,28 +28,38 @@ varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_
 varlist = ['bvsc_w_d','cvsl_w_u','cvsb_w_u','cvsb_w_d','n_bjets','pt_had_t_b','pt_w_d','bvsc_had_t_b','weight']
   
 #KPS modification
-varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
-           'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
-           ,'pt_w_u','pt_w_d','eta_w_u','eta_w_d','best_mva_score']
-#
+varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight','pt_w_u','pt_w_d','eta_w_u','eta_w_d','best_mva_score']
 
-
-def train(input_root_file, model_save_path, doSmote=False):
-  
-  data =  load_data(file_path=input_root_file,varlist=varlist,test_ratio=0.1,val_ratio=0.2,sigTree=['Reco_45'],bkgTree=['Reco_43','Reco_41','Reco_23','Reco_21'])
-  sm = SMOTENC(random_state=42, categorical_features=deepcopy(data["cat_idxs"]))
+#add mva input
+varlist.extend([])
+def train( model_save_path, doSmote=False):
+  if not os.path.isdir(model_save_path):
+    os.makedirs(model_save_path)
+  input_tuple=( #first element of tuple = signal tree, second =bkg tree.
+    [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==1'),
+     
+     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','passTightID_Central/Result_Tree','chk_reco_correct==1')
+     ], ##TTLJ_WtoCB Reco 1, (file_path, tree_path, filterstr)
+    
+    [
+      ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==0'), ##TTLJ_WtoCB Reco 0
+     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','POGTightWithTightIso_Central/Result_Tree','decay_mode==43'),
+     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','passTightID_Central/Result_Tree','chk_reco_correct==0'), ##TTLJ_WtoCB Reco 0
+     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','passTightID_Central/Result_Tree','decay_mode==43')
+     ] ##TTLJ_WtoCB cs decay
+    
+  )
+  data =  load_data(tree_path_filter_str=input_tuple,varlist=varlist,test_ratio=0.1,val_ratio=0.2)
+  sm = SMOTENC(random_state=42, categorical_features=data["cat_idxs"])
   clf = TabNetClassifier(
     n_d=32,
     n_a=32,
     verbose=1,
-    cat_idxs=deepcopy(data['cat_idxs']),
-    cat_dims=deepcopy(data['cat_dims']),
+    cat_idxs=data['cat_idxs'],
+    cat_dims=data['cat_dims'],
     cat_emb_dim=3,
     n_steps=5
     )  
-
-  del data
-  data =  load_data(file_path=input_root_file,varlist=varlist,test_ratio=0.1,val_ratio=0.2,sigTree=['Reco_45'],bkgTree=['Reco_43'])
 
 
   class WeightedMSE(Metric):
@@ -75,17 +85,16 @@ def train(input_root_file, model_save_path, doSmote=False):
     eval_metric=['auc','balanced_accuracy'],
     max_epochs=1000,
     num_workers=12,
-    #weights=data['class_weight']
-    #weights=0 if doSmote else 1,
-    weights=data['train_sample_and_class_weight'],
+    weights=0,
+    weights_for_loss=data['train_sample_and_class_weight']/np.mean(data['train_sample_and_class_weight']),
     batch_size=int(2097152/4),
     virtual_batch_size=512,
     #augmentations=aug,
-    patience=100
+    patience=50
     #callbacks=[pytorch_tabnet.callbacks.History(clf,verbose=1)]
   )
   
-  clf.save_model(model_save_path)
+  clf.save_model(os.path.join(model_save_path,'model.zip'))
   
 def plot(input_root_file,input_model_path,out_path):
   import ROOT
@@ -133,66 +142,131 @@ def plot(input_root_file,input_model_path,out_path):
   np.save(os.path.join(out_path,'y.npy'),data['train_y'])
 
 def infer(input_root_file,input_model_path):
-  import array, ROOT
+  import array, ROOT, uproot
+  ROOT.EnableImplicitMT()
   print(f'infering started for file {input_root_file}')
   model = TabNetClassifier()
   model.load_model(input_model_path)
-  f = ROOT.TFile(input_root_file, "READ")
-  dirName = f.GetListOfKeys()[0].ReadObj().GetName()
-  trName = dirName + '/Result_Tree'
-  print(trName)
-  f.Close()
-  if 'weight' in varlist:
-    varlist.remove('weight')
+  outname = input_root_file.split('/')
+  outname[-1] = outname[-1].replace('.root','')
+  outname = '_'.join(outname[-5:])
+  try:
+    f = ROOT.TFile(input_root_file, "UPDATE")
+    dirName = f.GetListOfKeys()[0].ReadObj().GetName()
+    trName = dirName + '/Result_Tree'
+    print(trName)
+    f.Close() 
 
-  data =  load_data(file_path=input_root_file,varlist=varlist,test_ratio=0,val_ratio=0,sigTree=["Result_Tree"],bkgTree=[],dirName=dirName)
-  arr = data['train_features']
-  weights = data['train_weight']
-  print(arr)
-  pred = model.predict_proba(arr)[:,1]
+    input_tuple=([(input_root_file,trName,'')],[])
+    data =  load_data(tree_path_filter_str=input_tuple,varlist=varlist,test_ratio=0,val_ratio=0)
+    print("Data loaded")
+    arr = data['train_features']
+    weights = data['train_weight']
+    pred = deepcopy(model.predict_proba(arr)[:,1])
+    # print(pred.shape,"pred shape")
+    # print(pred,"pred")
+    # print(pred.dtype())
+    
+    # from matplotlib import pyplot as plt
+    # #plt.hist(pred,bins=40)
+    # #plt.savefig(input_root_file.replace('.root','.png'))
+    # opts = ROOT.RDF.RSnapshotOptions()
+    # opts.fMode = "update"
+    # df = ROOT.RDF.MakeNumpyDataFrame({"template_MVA_score": pred})
+    # df = df.Redefine("template_MVA_score","(double)template_MVA_score")
+    #df.Snapshot(trName,input_root_file,"",opts)
+    
+    # #Open the ROOT file
+    # file = ROOT.TFile(input_root_file, "UPDATE")
+    # file.cd(dirName)
+    # #Get the TTree from the file
+    # tree = file.Get(dirName+"/Result_Tree")
 
+    
+    # #Create a new branch in the tree
+    # new_branch_name = "template_MVA_score"
+    # new_branch_value = array.array('f', [0.])
+    
+    # if tree.GetListOfBranches().Contains(new_branch_name):
+    #   new_branch = tree.GetBranch(new_branch_name)
+    # else:
+    #   new_branch = tree.Branch(new_branch_name, new_branch_value, new_branch_name+"/F")
+    
+    # #Create a numpy array to be written to the branch
+    # array_to_write = pred
 
-  # Open the ROOT file
-  file = ROOT.TFile(input_root_file, "UPDATE")
-  file.cd(dirName)
-  # Get the TTree from the file
-  tree = file.Get(dirName+"/Result_Tree")
+    # #Loop over the entries in the tree and write the array to the branch
+    # print('infering done. start writing.....')
 
-  # Create a new branch in the tree
-  new_branch_name = "template_MVA_score"
-  new_branch_value = array.array('d', [0.])
-  new_branch = tree.Branch(new_branch_name, new_branch_value, new_branch_name+"/D")
-  
-  # Create a numpy array to be written to the branch
-  array_to_write = pred
+    # for i in tqdm.tqdm(range(tree.GetEntries())):
+    #   tree.GetEntry(i)
+    #   new_branch_value[0] = float(array_to_write[i])
+    #   new_branch.Fill()
 
-  # Loop over the entries in the tree and write the array to the branch
-  print('infering done. start writing.....')
-  for i in tqdm.tqdm(range(tree.GetEntries())):
-      tree.GetEntry(i)
-      new_branch_value[0] = array_to_write[i]
-      new_branch.Fill()
+    # #Write the updated TTree to the file and close it
+    # tree.Write("", ROOT.TObject.kOverwrite)
 
-  # Write the updated TTree to the file and close it
-  tree.Write("", ROOT.TObject.kOverwrite)
-  file.Close()
-  
+    
+    # file.Close()
+    import time
+    start = time.time()
+    file = uproot.update(input_root_file)
+    file[trName].extend({"template_MVA_score_uproot": pred})
+    end = time.time()
+    print(f"{end - start:.5f} sec")
+    
+  except Exception as e:
+    import fcntl
+    print(e)
+    file_path = "/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/error_list"
+    with open(file_path, 'a') as file:
+      fcntl.flock(file, fcntl.LOCK_EX)
+      file.write(outname+"\n")
+      fcntl.flock(file, fcntl.LOCK_UN)
+    
 
 
 def infer_with_iter(input_folder,input_model_path):
-  eras = ['2018','2017','2016preVFP','2016postVFP']
-  chs = ['Mu','El','EE','MM','ME']
+  import htcondor, shutil
+  if os.path.isdir("/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/"):
+    shutil.rmtree("/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/")
+  os.makedirs("/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/")
+  eras = ['2017'] #'2016preVFP','2016postVFP']
+  chs = ['Mu'] #,'El']
   for era in eras:
     for ch in chs:
       if not os.path.isdir(os.path.join(input_folder,era,ch,'RunResult')):
         continue
       systs=os.listdir(os.path.join(input_folder,era,ch,'RunResult'))
       #to select directory only
-      systs=[f for f in systs if not '.' in f]
+      #systs=[f for f in systs if not '.' in f]o
+      systs=['Central_Syst']
       for syst in systs:
        files = [os.path.join(input_folder,era,ch,'RunResult',syst,f) for f in os.listdir(os.path.join(input_folder,era,ch,'RunResult',syst))]
        for file in files:
-         infer(file,input_model_path)
+        #infer(file,input_model_path)
+        outname = file.split('/')
+        outname[-1] = outname[-1].replace('.root','')
+        outname = '_'.join(outname[-5:])
+        job = htcondor.Submit({
+            "universe":"vanilla",
+            "getenv": True,
+            "jobbatchname": f"Vcb_infer",
+            "executable": "/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_write.sh",
+            "arguments": f"{input_model_path} {file}",
+            "output": f"/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/{outname}.out",
+            "error": f"/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/{outname}.err",
+            "request_memory": "32GB" if 'TTLJ' in file else "8GB",
+            "request_gpus": 1 if 'TTLJ' in file else 0,
+            "should_transfer_files":"YES",
+            "when_to_transfer_output" : "ON_EXIT",
+        })
+        
+        schedd = htcondor.Schedd()
+        with schedd.transaction() as txn:
+          cluster_id = job.queue(txn)
+        print("Job submitted with cluster ID:", cluster_id)
+        
   
   
 if __name__ == '__main__':
@@ -201,7 +275,7 @@ if __name__ == '__main__':
 
 
   # Define the available working modes
-  MODES = ['train', 'plot', 'infer']
+  MODES = ['train', 'plot','infer_iter','infer']
 
   # Create an argument parser
   parser = argparse.ArgumentParser(description='Select working mode')
@@ -216,18 +290,21 @@ if __name__ == '__main__':
 
   # Handle the selected working mode
   if args.working_mode == 'train':
-      print('Training Mode')
-      train(args.input_root_file,args.out_path)
+    print('Training Mode')
+    train(args.out_path)
 
   elif args.working_mode== 'plot':
-      print('Plotting Mode')
-      plot(args.input_root_file,args.input_model,args.out_path)
-      # Add code for mode 2 here
+    print('Plotting Mode')
+    plot(args.input_root_file,args.input_model,args.out_path)
+    # Add code for mode 2 here
+  elif args.working_mode == 'infer_iter':
+    print('Inffering Mode (all file iteration)')
+    infer_with_iter(args.input_root_file,args.input_model)
+    #infer(args.input_root_file,args.input_model)
+    # Add code for mode 3 here
   elif args.working_mode == 'infer':
-      print('Inffering Mode')
-      infer_with_iter(args.input_root_file,args.input_model)
-      #infer(args.input_root_file,args.input_model)
-      # Add code for mode 3 here
+    print('infering and writing')
+    infer(args.input_root_file,args.input_model)
   else:
     print('Wrong working mode')
 
