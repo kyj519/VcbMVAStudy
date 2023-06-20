@@ -29,10 +29,19 @@ varlist = ['bvsc_w_d','cvsl_w_u','cvsb_w_u','cvsb_w_d','n_bjets','pt_had_t_b','p
   
 #KPS modification
 varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight','pt_w_u','pt_w_d','eta_w_u','eta_w_d','best_mva_score']
-
-#add mva input
+#
+# varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
+#            'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
+#            ,'m_had_t','m_had_w','best_mva_score']   
+# #add mva input
+# varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
+#            'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
+#            ,'m_had_t','m_had_w','best_mva_score',
+#            'met_pt','lepton_pt','pt_had_t_b','pt_w_u','pt_w_d','pt_lep_t_b',
+#            'bvsc_had_t_b','cvsb_had_t_b','cvsl_had_t_b',
+#            'bvsc_lep_t_b','cvsb_lep_t_b','cvsl_lep_t_b',]  
 varlist.extend([])
-def train( model_save_path, doSmote=False):
+def train(model_save_path, doSmote=False):
   if not os.path.isdir(model_save_path):
     os.makedirs(model_save_path)
   input_tuple=( #first element of tuple = signal tree, second =bkg tree.
@@ -49,17 +58,20 @@ def train( model_save_path, doSmote=False):
      ] ##TTLJ_WtoCB cs decay
     
   )
-  data =  load_data(tree_path_filter_str=input_tuple,varlist=varlist,test_ratio=0.1,val_ratio=0.2)
+  data_info = {'tree_path_filter_str':input_tuple, 'varlist':varlist, 'test_ratio':0.1,'val_ratio':0.2}
+  data =  load_data(**data_info)
+
   sm = SMOTENC(random_state=42, categorical_features=data["cat_idxs"])
-  clf = TabNetClassifier(
-    n_d=32,
-    n_a=32,
-    verbose=1,
-    cat_idxs=data['cat_idxs'],
-    cat_dims=data['cat_dims'],
-    cat_emb_dim=3,
-    n_steps=5
-    )  
+  model_info = {
+    'n_d':32,
+    'n_a':32,
+    'verbose':1,
+    'cat_idxs':data['cat_idxs'],
+    'cat_dims':data['cat_dims'],
+    'cat_emb_dim':3,
+    'n_steps':5
+    }
+  clf = TabNetClassifier(**model_info)  
 
 
   class WeightedMSE(Metric):
@@ -78,23 +90,34 @@ def train( model_save_path, doSmote=False):
         return mse
   if doSmote:
     data['train_features'], data['train_y'] = sm.fit_resample(data['train_features'], data['train_y'])
-    
-  clf.fit(
-    X_train=data['train_features'],y_train=data['train_y'],
-    eval_set=[(data['val_features'], data['val_y'])],
-    eval_metric=['auc','balanced_accuracy'],
-    max_epochs=1000,
-    num_workers=12,
-    weights=0,
-    weights_for_loss=data['train_sample_and_class_weight']/np.mean(data['train_sample_and_class_weight']),
-    batch_size=int(2097152/4),
-    virtual_batch_size=512,
+  train_info={
+    'X_train':data['train_features'],
+    'y_train':data['train_y'],
+    'eval_set':[(data['val_features'], data['val_y'])],
+    'eval_metric':['balanced_accuracy','WeightedMSE','auc'],
+    'max_epochs':1000,
+    'num_workers':12,
+    'weights':1,
+    'batch_size':int(2097152/8),
+    'virtual_batch_size':512,
     #augmentations=aug,
-    patience=50
+    'patience':20
     #callbacks=[pytorch_tabnet.callbacks.History(clf,verbose=1)]
+  }
+  clf.fit(
+    **train_info
   )
+
+  
   
   clf.save_model(os.path.join(model_save_path,'model.zip'))
+  del train_info['X_train']
+  del train_info['y_train']
+  del train_info['eval_set']
+  
+  info_arr={'train_info':train_info, 'model_info':model_info, 'data_info':data_info}
+  info_arr=np.array(info_arr)
+  np.save(os.path.join(model_save_path,'info.npy'),info_arr)
   
 def plot(input_root_file,input_model_path,out_path):
   import ROOT
@@ -162,7 +185,7 @@ def infer(input_root_file,input_model_path):
     print("Data loaded")
     arr = data['train_features']
     weights = data['train_weight']
-    pred = deepcopy(model.predict_proba(arr)[:,1])
+    pred = model.predict_proba(arr)[:,1]
     # print(pred.shape,"pred shape")
     # print(pred,"pred")
     # print(pred.dtype())
@@ -176,24 +199,31 @@ def infer(input_root_file,input_model_path):
     # df = df.Redefine("template_MVA_score","(double)template_MVA_score")
     #df.Snapshot(trName,input_root_file,"",opts)
     
-    # #Open the ROOT file
-    # file = ROOT.TFile(input_root_file, "UPDATE")
-    # file.cd(dirName)
-    # #Get the TTree from the file
-    # tree = file.Get(dirName+"/Result_Tree")
+    #Open the ROOT file
+    file = ROOT.TFile(input_root_file, "UPDATE")
+    
+    #Get the TTree from the file
+    tree = file.Get(dirName+"/Result_Tree")
 
     
-    # #Create a new branch in the tree
-    # new_branch_name = "template_MVA_score"
-    # new_branch_value = array.array('f', [0.])
+    #Create a new branch in the tree
+    new_branch_name = "template_score"
+    new_branch_value = array.array('f', [0.])
     
     # if tree.GetListOfBranches().Contains(new_branch_name):
-    #   new_branch = tree.GetBranch(new_branch_name)
-    # else:
-    #   new_branch = tree.Branch(new_branch_name, new_branch_value, new_branch_name+"/F")
+    #   b1 = tree.GetBranch(new_branch_name)
+    #   tree.GetListOfBranches().Remove(b1)
+
+    # new_branch = tree.Branch(new_branch_name, new_branch_value, new_branch_name+"/F")
     
     # #Create a numpy array to be written to the branch
     # array_to_write = pred
+    # from matplotlib import pyplot as plt
+    # outname = input_root_file.split('/')
+    # outname[-1] = outname[-1].replace('.root','')
+    # outname = '_'.join(outname[-5:])
+    # plt.hist(pred)
+    # plt.savefig('/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log'+'/'+outname+'.png')
 
     # #Loop over the entries in the tree and write the array to the branch
     # print('infering done. start writing.....')
@@ -207,13 +237,16 @@ def infer(input_root_file,input_model_path):
     # tree.Write("", ROOT.TObject.kOverwrite)
 
     
-    # file.Close()
-    import time
-    start = time.time()
-    file = uproot.update(input_root_file)
-    file[trName].extend({"template_MVA_score_uproot": pred})
-    end = time.time()
-    print(f"{end - start:.5f} sec")
+    file.Close()
+    del data
+    data = ROOT.RDataFrame(trName,input_root_file)
+    data = data.AsNumpy()
+    data['Template_Score'] = pred
+    
+    df = ROOT.RDF.MakeNumpyDataFrame(data)
+    file.cd(dirName)
+    df.Snapshot(dirName+"/Result_Tree",input_root_file)
+
     
   except Exception as e:
     import fcntl
@@ -232,15 +265,15 @@ def infer_with_iter(input_folder,input_model_path):
     shutil.rmtree("/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/")
   os.makedirs("/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/")
   eras = ['2017'] #'2016preVFP','2016postVFP']
-  chs = ['Mu'] #,'El']
+  chs = ['Mu' ,'El']
   for era in eras:
     for ch in chs:
       if not os.path.isdir(os.path.join(input_folder,era,ch,'RunResult')):
         continue
       systs=os.listdir(os.path.join(input_folder,era,ch,'RunResult'))
       #to select directory only
-      #systs=[f for f in systs if not '.' in f]o
-      systs=['Central_Syst']
+      systs=[f for f in systs if not '.' in f]
+      #systs=['Central_Syst']
       for syst in systs:
        files = [os.path.join(input_folder,era,ch,'RunResult',syst,f) for f in os.listdir(os.path.join(input_folder,era,ch,'RunResult',syst))]
        for file in files:
@@ -248,16 +281,19 @@ def infer_with_iter(input_folder,input_model_path):
         outname = file.split('/')
         outname[-1] = outname[-1].replace('.root','')
         outname = '_'.join(outname[-5:])
+        if not (syst == 'Central_Syst' and 'WtoCB' in file):
+          continue
         job = htcondor.Submit({
             "universe":"vanilla",
             "getenv": True,
-            "jobbatchname": f"Vcb_infer",
+            "jobbatchname": f"Vcb_infer_{outname}",
             "executable": "/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_write.sh",
             "arguments": f"{input_model_path} {file}",
             "output": f"/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/{outname}.out",
             "error": f"/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/{outname}.err",
-            "request_memory": "32GB" if 'TTLJ' in file else "8GB",
-            "request_gpus": 1 if 'TTLJ' in file else 0,
+            "request_memory": "64GB" if 'TTLJ' in file else "16GB",
+            "request_gpus": 0 if 'TTLJ' in file else 0,
+            "request_cpus": 16 if 'TTLJ' in file else 4,
             "should_transfer_files":"YES",
             "when_to_transfer_output" : "ON_EXIT",
         })

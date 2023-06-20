@@ -5,10 +5,10 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import sys,os
 sys.path.append(os.environ["DIR_PATH"])
-ROOT.EnableImplicitMT(16)
+ROOT.EnableImplicitMT(4)
 from root_data_loader import load_data
 model = TabNetClassifier()
-folder_path = '/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/model_only_correct_reco_muel'
+folder_path = '/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/model'
 files = os.listdir(folder_path)
 # Filter for files with a .pt.zip extension
 pt_zip_files = [f for f in files if f.endswith('.zip')]
@@ -44,6 +44,10 @@ varlist.extend(['n_jets',
 varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
            'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
            ,'pt_w_u','pt_w_d','eta_w_u','eta_w_d','best_mva_score']
+# #
+# varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
+#            'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
+#            ,'m_had_t','m_had_w','best_mva_score']           
 result = []
 # outfile = ROOT.TFile(os.path.join(folder_path,'predictions.root'), "RECREATE")
 # for mode in modelist:
@@ -73,10 +77,19 @@ result = []
 # fig.figure.savefig('stack.png',dpi=600)
 import postTrainingToolkit
 input_tuple=( #first element of tuple = signal tree, second =bkg tree.
-    [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==1')] ##TTLJ_WtoCB Reco 1, (file_path, tree_path, filterstr)
-    ,[('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','POGTightWithTightIso_Central/Result_Tree','decay_mode==43'),
-      ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==0')] ##TTLJ_WtoCB cs decay
-    )
+    [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==1'),
+     
+     #('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','passTightID_Central/Result_Tree','chk_reco_correct==1')
+     ], ##TTLJ_WtoCB Reco 1, (file_path, tree_path, filterstr)
+    
+    [
+      ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==0'), ##TTLJ_WtoCB Reco 0
+     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','POGTightWithTightIso_Central/Result_Tree','decay_mode==43'),
+     #('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','passTightID_Central/Result_Tree','chk_reco_correct==0'), ##TTLJ_WtoCB Reco 0
+     #('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/El/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','passTightID_Central/Result_Tree','decay_mode==43')
+     ] ##TTLJ_WtoCB cs decay
+    
+  )
 data =  load_data(tree_path_filter_str=input_tuple,varlist=varlist,test_ratio=0.1,val_ratio=0.2)
 arr = data['train_features']
 weights = data['train_weight']

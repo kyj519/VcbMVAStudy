@@ -1,8 +1,0 @@
-device is cpu
-infering and writing
-infering started for file /gv0/Users/yeonjoon/Vcb/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WJets_MG.root
-POGTightWithTightIso_Central/Result_Tree
-['bvsc_w_u', 'bvsc_w_d', 'cvsl_w_u', 'cvsl_w_d', 'cvsb_w_u', 'cvsb_w_d', 'n_bjets', 'n_cjets', 'weight', 'pt_w_u', 'pt_w_d', 'eta_w_u', 'eta_w_d', 'best_mva_score']
-('/gv0/Users/yeonjoon/Vcb/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WJets_MG.root', 'POGTightWithTightIso_Central/Result_Tree', '')
-const vector<float>& ROOT::RDF::RResultPtr<vector<float> >::GetValue() =>
-    SegmentationViolation: segfault in C++; program state was reset

@@ -12,6 +12,8 @@ def load_data(tree_path_filter_str=([], []), varlist=[], test_ratio=0.1, val_rat
     print(varlist)
     sig_dict = []
     bkg_dict = []
+    
+
 
     for tup in tree_path_filter_str[0]:
         print(tup)
@@ -20,6 +22,8 @@ def load_data(tree_path_filter_str=([], []), varlist=[], test_ratio=0.1, val_rat
         filterstr = tup[2]
         tr = f.Get(tree)
         df = ROOT.RDataFrame(tr)
+        if varlist == []:
+            varlist = [col for col in df.GetColumnNames()]
         if 'weight' in varlist and 'weight' not in df.GetColumnNames():
             df = df.Define('weight', '''weight_c_tag*
                                         weight_el_id*

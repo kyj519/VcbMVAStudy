@@ -1,9 +1,6 @@
 #!/bin/bash
 
-
 dir=$DIR_PATH
-cd $dir
-method='TabNet_Permutation'
+method='TabNet_template'
 #root -l -b -q "${dir}/$method/Permutation_MVA.cxx($n_jet, $pre_kin)"
-python3 "${dir}/$method/MVA.py"
-
+python3 ${dir}/$method/MVA.py --working_mode train --out_path ${dir}/$method/model_2017_mu+el
