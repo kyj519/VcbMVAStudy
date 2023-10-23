@@ -5,27 +5,78 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.preprocessing import LabelEncoder
 from copy import deepcopy
-ROOT.EnableImplicitMT()
+ROOT.EnableImplicitMT(1)
 
+def addRFcolumn(df,file):
+    print(f'RFProducer created for file {file}, as sample TTLJ')
+    df = df.Define("weight_RFPatch",    f"RFPatch->GetSF(n_vertex,ht,isBB,isCC,whatMode)")
+    return df
 
+# @ROOT.Numba.Declare(['RVecI', 'RVecI'], 'int')
+# def isBB(origs,flavs):
+#     for i in range(len(origs)):
+#         orig = origs[i]
+#         flav = flavs[i]
+#         if flav == 5 and abs(orig) != 6 and abs(orig) != 24:
+#             return 1
+#     return 0
+
+# @ROOT.Numba.Declare(['RVecI', 'RVecI'], 'int')
+# def isCC(origs,flavs):
+#     for i in range(len(origs)):
+#         orig = origs[i]
+#         flav = flavs[i]
+#         if flav == 4 and abs(orig) != 6 and abs(orig) != 24:
+#             return 1
+#     return 0
+        
+
+def addHisto_idx(df):
+    #df = df.Define('isBB','std::any_of(Sel_Gen_HF_Origin.begin(), Sel_Gen_HF_Origin.end(), [&](int orig) { return Sel_Gen_HF_Flavour[&orig - &Sel_Gen_HF_Origin[0]] == 5 && abs(orig) != 6 && abs(orig) != 24; })')
+    #df = df.Define('isCC','std::any_of(Sel_Gen_HF_Origin.begin(), Sel_Gen_HF_Origin.end(), [&](int orig) { return Sel_Gen_HF_Flavour[&orig - &Sel_Gen_HF_Origin[0]] == 4 && abs(orig) != 6 && abs(orig) != 24; })')
+    df = df.Define('isBB','for(size_t i = 0; i < Sel_Gen_HF_Origin.size(); ++i) if (Sel_Gen_HF_Flavour[i] == 5 && abs(Sel_Gen_HF_Origin[i]) != 6 && abs(Sel_Gen_HF_Origin[i]) != 24) return 1; return 0;')
+    df = df.Define('isCC_temp','for(size_t i = 0; i < Sel_Gen_HF_Origin.size(); ++i) if (Sel_Gen_HF_Flavour[i] == 5 && abs(Sel_Gen_HF_Origin[i]) != 6 && abs(Sel_Gen_HF_Origin[i]) != 24) return 1; return 0;')
+    #since both BB and CC cannot be 1 in same time
+    df = df.Define('isCC', '!isBB && isCC_temp')
+
+    df = df.Define('whatMode','(decay_mode == 21 || decay_mode == 23) ?2 : (decay_mode == 41 || decay_mode == 43) ? 4 : (decay_mode == 45) ? 45 : 0')
+    return df
+    
 def load_data(tree_path_filter_str=([], []), varlist=[], test_ratio=0.1, val_ratio=0.2, cat_vars=[], makeStandard=False, useLabelEncoder=True):
     print(varlist)
     sig_dict = []
     bkg_dict = []
+    training_mode = False
+    if not(val_ratio == 0 and test_ratio == 0):
+        training_mode = True
+        print('Root2numpy loader on training mode')
+    else:
+        print('Root2numpy loader on infering mode')
+        
+    if training_mode:
+        path='/data6/Users/yeonjoon/VcbMVAStudy/Vcb_Tagging_RF_2017.root'
+        ROOT.gROOT.LoadMacro("/data6/Users/yeonjoon/VcbMVAStudy/SFProducer.h")
+        ROOT.gInterpreter.Declare(f"std::unique_ptr<SFProducer> RFPatch(new SFProducer(\"2017\",\"{path}\",\"TTLJ\"));")
+        ROOT.gInterpreter.ProcessLine('RFPatch->LoadSF();')
     
-
-
     for tup in tree_path_filter_str[0]:
+        print('load Data for')
         print(tup)
+        print('\n')
+        
         f = ROOT.TFile(tup[0], "READ")
         tree = tup[1]
         filterstr = tup[2]
         tr = f.Get(tree)
         df = ROOT.RDataFrame(tr)
+
         if varlist == []:
             varlist = [col for col in df.GetColumnNames()]
-        if 'weight' in varlist and 'weight' not in df.GetColumnNames():
-            df = df.Define('weight', '''weight_c_tag*
+        if training_mode:
+            #df = addHisto_idx(df)
+            #df = addRFcolumn(df,tup[0]) 
+            if 'weight' in varlist and 'weight' not in df.GetColumnNames():
+                df = df.Define('weight', '''weight_c_tag*
                                         weight_el_id*
                                         weight_lumi*
                                         weight_mc*
@@ -35,19 +86,27 @@ def load_data(tree_path_filter_str=([], []), varlist=[], test_ratio=0.1, val_rat
                                         weight_prefire*
                                         weight_sl_trig*
                                         weight_top_pt''')
+                                        #weight_RFPatch
 
         df = df if filterstr == '' else df.Filter(filterstr)
         sig_dict.append(df.AsNumpy(varlist))
 
     for tup in tree_path_filter_str[1]:
+        print('load Data for')
         print(tup)
+        print('\n')
+        
         f = ROOT.TFile(tup[0], "READ")
         tree = tup[1]
         filterstr = tup[2]
         tr = f.Get(tree)
         df = ROOT.RDataFrame(tr)
-        if 'weight' in varlist and 'weight' not in df.GetColumnNames():
-            df = df.Define('weight', '''weight_c_tag*
+        if training_mode:
+            #df = addHisto_idx(df)
+            #f = addRFcolumn(df,tup[0]) 
+            if 'weight' in varlist and 'weight' not in df.GetColumnNames():
+            #continue
+                df = df.Define('weight', '''weight_c_tag*
                                         weight_el_id*
                                         weight_lumi*
                                         weight_mc*
@@ -57,7 +116,8 @@ def load_data(tree_path_filter_str=([], []), varlist=[], test_ratio=0.1, val_rat
                                         weight_prefire*
                                         weight_sl_trig*
                                         weight_top_pt''')
-        tr = f.Get(tree)
+                                        #weight_RFPatch
+        
         df = df if filterstr == '' else df.Filter(filterstr)
         bkg_dict.append(df.AsNumpy(varlist))
 
@@ -82,7 +142,6 @@ def load_data(tree_path_filter_str=([], []), varlist=[], test_ratio=0.1, val_rat
     df = df.reset_index(drop=True)
     np.random.seed(42)
     if val_ratio == 0 and test_ratio == 0:
-        print("Full dataset, For validation")
         df["Set"] = np.random.choice(["train"], p=[1.], size=(df.shape[0],))
         df['Set'] = 'train'
     elif test_ratio == 0 and val_ratio != 0:
@@ -93,19 +152,21 @@ def load_data(tree_path_filter_str=([], []), varlist=[], test_ratio=0.1, val_rat
                                      1. - (val_ratio+test_ratio), val_ratio, test_ratio], size=(df.shape[0],))
 
     if not(val_ratio == 0 and test_ratio == 0):
-        print("Training mode, eliminate negative weight sample.......skipped!")
-        #df = df[df['weight'] >= 0]
+        print("Training mode, eliminate negative weight sample")
+        df = df[df['weight'] >= 0]
 
     df = df.reset_index(drop=True)
     # calculate class weights
     sig_idx = df[df['y'] == 1].index
     bkg_idx = df[df['y'] == 0].index
+    if 'weight' not in df.columns:
+        df['weight'] = 1.
     total_samples = df['weight'].sum()
+    
     class_weight =  {0: 1., 1: 1.} if tree_path_filter_str[1] == [] else {
         0: total_samples / df['weight'].values[bkg_idx].sum(),
         1: total_samples / df['weight'].values[sig_idx].sum()
     }
-    print(class_weight, tree_path_filter_str[1])
     
     df['sample_and_class_weight'] = df.apply(
         lambda row: row['weight'] * class_weight[row['y']], axis=1)
@@ -149,7 +210,6 @@ def load_data(tree_path_filter_str=([], []), varlist=[], test_ratio=0.1, val_rat
     cat_idxs = [i for i, f in enumerate(features) if f in categorical_columns]
     cat_dims = [categorical_dims[f]
                 for i, f in enumerate(features) if f in categorical_columns]
-    print(features)
     train_features = np.array(df[features].values[train_indices])
     train_y = np.array(df[target].values[train_indices])
 
