@@ -1,14 +1,14 @@
 universe   = vanilla
-executable = MVA_gpu.sh
+executable = MVA_gpu_only45.sh
 jobbatchname = Vcb_Template_TabNet
 log = condor.log
 getenv     = True
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 request_memory = 64GB
-request_cpus = 8
-request_gpus =1 
-output = job_gpu_twostep.log
-error = job_gpu_twostep.err
+request_cpus = 16
+request_gpus = 1 
+output = job_gpu_4545.log
+error = job_gpu_4545.err
 
 queue 1

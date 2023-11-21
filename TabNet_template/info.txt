@@ -1,0 +1,21 @@
+Training info
+eval_metric: ['balanced_accuracy', 'WeightedMSE', 'auc']
+max_epochs: 1000
+num_workers: 4
+weights: 0
+batch_size: 65536
+virtual_batch_size: 4096
+patience: 30
+###########################################################model info
+n_d: 32
+n_a: 32
+verbose: 1
+cat_idxs: [6, 7]
+cat_dims: [11, 16]
+cat_emb_dim: 3
+n_steps: 8
+###########################################################data info
+tree_path_filter_str: ([('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/BackUp_Two_Step_Reco/RunResult/BackUp/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root', 'Central/Result_Tree', 'chk_reco_correct==1', '(0.3041 / 8850014.0)')], [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/BackUp_Two_Step_Reco/RunResult/BackUp/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root', 'Central/Result_Tree', 'chk_reco_correct==0', '(0.3041 / 8850014.0)'), ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/BackUp_Two_Step_Reco/RunResult/BackUp/Central_Syst/Vcb_TTLJ_powheg.root', 'Central/Result_Tree', 'decay_mode==43', '(365.34 / 352462632.0)')])
+varlist: ['bvsc_w_u', 'bvsc_w_d', 'cvsl_w_u', 'cvsl_w_d', 'cvsb_w_u', 'cvsb_w_d', 'n_bjets', 'n_cjets', 'weight', 'pt_w_u', 'pt_w_d', 'eta_w_u', 'eta_w_d', 'best_mva_score', 'm_had_t', 'm_had_w']
+test_ratio: 0.1
+val_ratio: 0.2

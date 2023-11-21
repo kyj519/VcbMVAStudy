@@ -6,11 +6,11 @@ getenv     = True
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 request_memory = 8192*4
-request_gpus=0
-request_cpus = 1
+request_gpus=1
+request_cpus =4
 arguments  = $(Process)
 output = job_$(Process).log
 error = job_$(Process).err
 
 
-queue 50
+queue 100

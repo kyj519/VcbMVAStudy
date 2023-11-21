@@ -8,7 +8,7 @@ print(torch.__file__)
 
 import sys
 sys.path.append(os.environ["DIR_PATH"])
-from root_data_loader import load_data, classWtoSampleW
+#from root_data_loader import load_data, classWtoSampleW
 print(torch.cuda.is_available())
 
 
@@ -51,14 +51,15 @@ def objective(trial: optuna.Trial, data):
   param_model = {
     'n_d':trial.suggest_categorical('n_d',[pow(2,i) for i in [3,4,5,6]]),
     'n_steps':trial.suggest_int('n_steps',3,10),
-    'gamma':trial.suggest_float('gamma',1.,2.),
+    'gamma':trial.suggest_float('gamma',1.,5.),
     'cat_emb_dim':trial.suggest_int('cat_emb_dim',1,5),
     'n_independent':trial.suggest_int('n_independent',1,5),
     'n_shared':trial.suggest_int('n_independent',1,5),
+    'lambda_sparse': trial.suggest_float('lambda_sparse',0,1e-1)
   }
   param_model['n_a'] = param_model['n_d']
   param_fit = {
-    'batch_size':trial.suggest_categorical('batch_size',[pow(2,i) for i in [12,13,14,15,16,17]]),
+    'batch_size':trial.suggest_categorical('batch_size',[pow(2,i) for i in [12,13,14,15,16,17,18]]),
     'virtual_batch_size':trial.suggest_categorical('virtual_batch_size',[pow(2,i) for i in [5,6,7,8,9,10]])
   }
   print(param_model)
@@ -103,10 +104,13 @@ if __name__ == '__main__':
      ('/gv0/Users/yeonjoon/Vcb/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','POGTightWithTightIso_Central/Result_Tree','decay_mode==43&&n_bjets>=3')] ##TTLJ_WtoCB cs decay
     
   )
-  data =  load_data(tree_path_filter_str=input_tuple,varlist=varlist,test_ratio=0.1,val_ratio=0.2)
+  folder_path = '/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/model_2017_mu+el_reco'
+  #data =  load_data(tree_path_filter_str=input_tuple,varlist=varlist,test_ratio=0.1,val_ratio=0.2)
+  data = np.load(os.path.join(folder_path,'data.npz'),allow_pickle=True)
+  data = data['arr_0']
   optuna.logging.set_verbosity(optuna.logging.DEBUG)
-  study = optuna.load_study(study_name="distributed-example", storage="mysql://yeonjoon@tamsa1-ib0/optuna_yeonjoon")
-  study.optimize(lambda trial: objective(trial, data) ,n_trials=300)
+  study = optuna.load_study(study_name="Vcb_TabNet_reco", storage="mysql://yeonjoon@tamsa1-ib0/optuna_yeonjoon")
+  study.optimize(lambda trial: objective(trial, data) ,n_trials=1)
   
 
 
