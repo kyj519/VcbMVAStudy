@@ -16,3 +16,8 @@ lib/*.tar.gz
 *.zip
 *.png
 *.npy
+*.log
+*.out
+*.err
+model_*
+
