@@ -18,53 +18,38 @@ print(f'device is {device}')
 
 
 
-varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','pt_w_u','pt_w_d','weight']
-varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight']
-#varlist = ['cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight']
-# varlist.extend(['n_jets',
-#                 'pt_had_t_b','pt_w_u','pt_w_d','pt_lep_t_b',
-#                 'eta_had_t_b','eta_w_u','eta_w_d','eta_lep_t_b',
-#                 'bvsc_lep_t_b','bvsc_had_t_b'])
-varlist = ['bvsc_w_d','cvsl_w_u','cvsb_w_u','cvsb_w_d','n_bjets','pt_had_t_b','pt_w_d','bvsc_had_t_b','weight']
-  
-#KPS modification
-varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d','cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight','pt_w_u','pt_w_d','eta_w_u','eta_w_d','best_mva_score']
-#
-# varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
-#            'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
-#            ,'m_had_t','m_had_w','best_mva_score']   
-# #add mva input
-# varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
-#            'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
-#            ,'m_had_t','m_had_w','best_mva_score',
-#            'met_pt','lepton_pt','pt_had_t_b','pt_w_u','pt_w_d','pt_lep_t_b',
-#            'bvsc_had_t_b','cvsb_had_t_b','cvsl_had_t_b',
-#            'bvsc_lep_t_b','cvsb_lep_t_b','cvsl_lep_t_b',]  
-varlist.extend([])
-def train(model_save_path, doSmote=False):
+varlist = ["met_pt", "neutrino_p", "lepton_pt", "pt_ratio",
+    "pt_had_t_b", "pt_w_u", "pt_w_d", "pt_lep_t_b",
+    "bvsc_had_t_b", "cvsb_had_t_b", "cvsl_had_t_b",     "bvsc_lep_t_b", "cvsb_lep_t_b", "cvsl_lep_t_b",
+    "theta_w_u_w_d", "theta_lep_neu", "theta_lep_w_lep_t_b", "del_phi_had_t_lep_t", 
+    "had_t_mass", "had_w_mass", "lep_t_mass","lep_t_partial_mass",
+    "chi2_jet_had_t_b","chi2_jet_w_u","chi2_jet_w_d","chi2_jet_lep_t_b",
+    "chi2_constraint_had_t", "chi2_constraint_had_w",
+    "chi2_constraint_lep_t", "chi2_constraint_lep_w"]
+
+
+def train(model_save_path, n_jets):
+  n_jets = int(n_jets) + 4
+  if n_jets > 4:
+    varlist.extend(['chi2_jet_extra'])
+  model_save_path = model_save_path+f'_{n_jets}jets'
   if not os.path.isdir(model_save_path):
     os.makedirs(model_save_path)
   input_tuple=( #first element of tuple = signal tree, second =bkg tree.
-    [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==1'),
-     
-     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','passTightID_Central/Result_Tree','chk_reco_correct==1')
+    [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunPermutationTree/Vcb_TTLJ_WtoCB_powheg.root','Permutation_Correct',f'n_jets=={n_jets}'),
+     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunPermutationTree/Vcb_TTLJ_WtoCB_powheg.root','Permutation_Correct',f'n_jets=={n_jets}')
      ], ##TTLJ_WtoCB Reco 1, (file_path, tree_path, filterstr)
     
-    [
-      ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==0'), ##TTLJ_WtoCB Reco 0
-     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','POGTightWithTightIso_Central/Result_Tree','decay_mode==43'),
-     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','passTightID_Central/Result_Tree','chk_reco_correct==0'), ##TTLJ_WtoCB Reco 0
-     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','passTightID_Central/Result_Tree','decay_mode==43')
+    [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunPermutationTree/Vcb_TTLJ_WtoCB_powheg.root','Permutation_Wrong',f'n_jets=={n_jets}'),
+     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunPermutationTree/Vcb_TTLJ_WtoCB_powheg.root','Permutation_Wrong',f'n_jets=={n_jets}')
      ] ##TTLJ_WtoCB cs decay
-    
   )
   data_info = {'tree_path_filter_str':input_tuple, 'varlist':varlist, 'test_ratio':0.1,'val_ratio':0.2}
   data =  load_data(**data_info)
 
-  sm = SMOTENC(random_state=42, categorical_features=data["cat_idxs"])
   model_info = {
-    'n_d':32,
-    'n_a':32,
+    'n_d':16,
+    'n_a':16,
     'verbose':1,
     'cat_idxs':data['cat_idxs'],
     'cat_dims':data['cat_dims'],
@@ -88,8 +73,7 @@ def train(model_save_path, doSmote=False):
             weight.append(data['class_weight'][0])
         mse = mean_squared_error(y_true, y_score[:, 1],sample_weight=weight)
         return mse
-  if doSmote:
-    data['train_features'], data['train_y'] = sm.fit_resample(data['train_features'], data['train_y'])
+
   train_info={
     'X_train':data['train_features'],
     'y_train':data['train_y'],
@@ -242,10 +226,11 @@ def infer(input_root_file,input_model_path):
     data = ROOT.RDataFrame(trName,input_root_file)
     data = data.AsNumpy()
     data['Template_Score'] = pred
-    
-    df = ROOT.RDF.MakeNumpyDataFrame(data)
-    file.cd(dirName)
-    df.Snapshot(dirName+"/Result_Tree",input_root_file)
+    #for key, item in data.items():
+    #  if data[key].dtype == 'object':
+    #    data[key] = data[key].astype(bool)
+        
+
 
     
   except Exception as e:
@@ -321,13 +306,14 @@ if __name__ == '__main__':
   parser.add_argument('--input_root_file' ,dest='input_root_file', type=str,  default="")
   parser.add_argument('--input_model' ,dest='input_model', type=str,  default="")
   parser.add_argument('--out_path' ,dest='out_path', type=str,  default="")
+  parser.add_argument('--n_jets', dest='n_jets', type=str, default=4)
   # Parse the arguments from the command line
   args = parser.parse_args()
 
   # Handle the selected working mode
   if args.working_mode == 'train':
     print('Training Mode')
-    train(args.out_path)
+    train(args.out_path, args.n_jets)
 
   elif args.working_mode== 'plot':
     print('Plotting Mode')

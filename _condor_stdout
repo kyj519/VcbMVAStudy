@@ -1,0 +1,1262 @@
+SFProducerPUJetId::SFProducerPUJetId()::In Constructor
+SFProducerPUJetId::SFProducerPUJetId()::In Constructor
+SFProducerPUJetId::SFProducerPUJetId()::In Constructor
+SFProducerPUJetId::SFProducerPUJetId()::In Constructor
+SFProducerPUJetId::SFProducerPUJetId()::In Constructor
+SFProducerPUJetId::SFProducerPUJetId()::In Constructor
+SFProducerPUJetId::SFProducerPUJetId()::In Constructor
+SFProducerPUJetId::LoadSF()::Load SF for era = 2017, sample = TTLJ
+SFProducerPUJetId::LoadSF()::Load SF for era = 2017, sample = QCD_bEn
+SFProducerPUJetId::LoadSF()::Load SF for era = 2017, sample = ST
+SFProducerPUJetId::LoadSF()::Load SF for era = 2017, sample = TTLL
+SFProducerPUJetId::LoadSF()::Load SF for era = 2017, sample = ttV
+SFProducerPUJetId::LoadSF()::Load SF for era = 2017, sample = VJets
+SFProducerPUJetId::LoadSF()::Load SF for era = 2017, sample = VV
+device is cuda:0, count is 1
+Training Mode
+['bvsc_w_u', 'bvsc_w_d', 'cvsl_w_u', 'cvsl_w_d', 'cvsb_w_u', 'cvsb_w_d', 'best_mva_score', 'weight']
+Root2numpy loader on training mode
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root', 'Central/Result_Tree', '(chk_reco_correct==1)&&(best_mva_score_pre>0)', '(0.3041 / 8850014.0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root is matched to TTLJ
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root', 'Central/Result_Tree', '(chk_reco_correct==1)&&(best_mva_score_pre>0)', '(0.3041 / 8850014.0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root is matched to TTLJ
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root', 'Central/Result_Tree', '(chk_reco_correct==0)&&(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root is matched to TTLJ
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_powheg.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_powheg.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_powheg.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_powheg.root is matched to TTLJ
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLJ_powheg.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root', 'Central/Result_Tree', '(chk_reco_correct==0)&&(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root is matched to TTLJ
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root is matched to TTLJ
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WZ_pythia.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WZ_pythia.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WZ_pythia.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WZ_pythia.root is matched to VV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WZ_pythia.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WZ_pythia.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WZ_pythia.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WZ_pythia.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WZ_pythia.root is matched to VV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WZ_pythia.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WJets_MG.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WJets_MG.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WJets_MG.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WJets_MG.root is matched to VJets
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WJets_MG.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WJets_MG.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WJets_MG.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WJets_MG.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WJets_MG.root is matched to VJets
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WJets_MG.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1000to1500.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_sch_Lep.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToLNu.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToLNu.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToLNu.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToLNu.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToLNu.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToLNu.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToLNu.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToLNu.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToLNu.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToLNu.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHToNonbb.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHToNonbb.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHToNonbb.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHToNonbb.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHToNonbb.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHToNonbb.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHToNonbb.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHToNonbb.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHToNonbb.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHToNonbb.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_DYJets_MG.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_DYJets_MG.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_DYJets_MG.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_DYJets_MG.root is matched to VJets
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_DYJets_MG.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_DYJets_MG.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_DYJets_MG.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_DYJets_MG.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_DYJets_MG.root is matched to VJets
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_DYJets_MG.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT700to1000.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT500to700.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToLLNuNu.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT1500to2000.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT2000toInf.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToQQ.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToQQ.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToQQ.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToQQ.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttZToQQ.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToQQ.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToQQ.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToQQ.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToQQ.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttZToQQ.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WW_pythia.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WW_pythia.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WW_pythia.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WW_pythia.root is matched to VV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_WW_pythia.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WW_pythia.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WW_pythia.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WW_pythia.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WW_pythia.root is matched to VV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_WW_pythia.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHTobb.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHTobb.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHTobb.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHTobb.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttHTobb.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHTobb.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHTobb.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHTobb.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHTobb.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttHTobb.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLL_powheg.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLL_powheg.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLL_powheg.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLL_powheg.root is matched to TTLL
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_TTLL_powheg.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLL_powheg.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLL_powheg.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLL_powheg.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLL_powheg.root is matched to TTLL
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_TTLL_powheg.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToQQ.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToQQ.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToQQ.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToQQ.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ttWToQQ.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToQQ.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToQQ.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToQQ.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToQQ.root is matched to ttV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ttWToQQ.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT100to200.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ZZ_pythia.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ZZ_pythia.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ZZ_pythia.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ZZ_pythia.root is matched to VV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_ZZ_pythia.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ZZ_pythia.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ZZ_pythia.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ZZ_pythia.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ZZ_pythia.root is matched to VV
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_ZZ_pythia.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_antitop_Incl.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_antitop_NoFullyHad.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root is matched to QCD_bEn
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT300to500.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tch_top_Incl.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root
+Calculate RF from /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root
+/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root is matched to ST
+calculate the evt. weight for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/El/RunResult/Central_Syst/Vcb_SingleTop_tW_top_NoFullyHad.root
+
+weight is calculated by 
+
+weight_c_tag*
+                    weight_el_id*
+                    weight_mc*
+                    weight_lumi*
+                    weight_mu_id*
+                    weight_mu_iso*
+                    weight_el_id*
+                    weight_el_reco*
+                    weight_pileup*
+                    weight_prefire*
+                    weight_sl_trig*
+                    weight_top_pt*
+                    weight_RFPatch
+##########################################################
+load Data for
+('/data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT200to300.root', 'Central/Result_Tree', '(best_mva_score_pre>0)')
+add RF column for /data6/Users/yeonjoon/Vcb_Post_Analysis/Sample/2017/Mu/RunResult/Central_Syst/Vcb_QCD_bEnriched_HT200to300.root
