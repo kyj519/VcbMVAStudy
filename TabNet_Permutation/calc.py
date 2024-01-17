@@ -8,7 +8,7 @@ sys.path.append(os.environ["DIR_PATH"])
 ROOT.EnableImplicitMT(4)
 from root_data_loader import load_data
 model = TabNetClassifier()
-folder_path = '/data6/Users/yeonjoon/VcbMVAStudy/TabNet_Permutation/model_4jets'
+folder_path = '/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/model'
 files = os.listdir(folder_path)
 # Filter for files with a .pt.zip extension
 pt_zip_files = [f for f in files if f.endswith('.zip')]
@@ -40,14 +40,11 @@ varlist.extend(['n_jets',
 
 
   
-varlist = ["met_pt", "neutrino_p", "lepton_pt", "pt_ratio",
-    "pt_had_t_b", "pt_w_u", "pt_w_d", "pt_lep_t_b",
-    "bvsc_had_t_b", "cvsb_had_t_b", "cvsl_had_t_b",     "bvsc_lep_t_b", "cvsb_lep_t_b", "cvsl_lep_t_b",
-    "theta_w_u_w_d", "theta_lep_neu", "theta_lep_w_lep_t_b", "del_phi_had_t_lep_t", 
-    "had_t_mass", "had_w_mass", "lep_t_mass","lep_t_partial_mass",
-    "chi2_jet_had_t_b","chi2_jet_w_u","chi2_jet_w_d","chi2_jet_lep_t_b",
-    "chi2_constraint_had_t", "chi2_constraint_had_w",
-    "chi2_constraint_lep_t", "chi2_constraint_lep_w"]
+#KPS modification
+varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
+           'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
+           ,'pt_w_u','pt_w_d','eta_w_u','eta_w_d','best_mva_score']
+# #
 # varlist = ['bvsc_w_u','bvsc_w_d','cvsl_w_u','cvsl_w_d',
 #            'cvsb_w_u','cvsb_w_d','n_bjets','n_cjets','weight'
 #            ,'m_had_t','m_had_w','best_mva_score']           
@@ -79,28 +76,27 @@ result = []
 # fig = df.plot.hist(stacked=True, bins=30, figsize=(10, 6), grid=True)
 # fig.figure.savefig('stack.png',dpi=600)
 import postTrainingToolkit
-n_jets = 4
 input_tuple=( #first element of tuple = signal tree, second =bkg tree.
-    [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunPermutationTree/Vcb_TTLJ_WtoCB_powheg.root','Permutation_Correct',f'n_jets=={n_jets}'),
-     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunPermutationTree/Vcb_TTLJ_WtoCB_powheg.root','Permutation_Correct',f'n_jets=={n_jets}')
+    [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==1'),
+     
+     #('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','passTightID_Central/Result_Tree','chk_reco_correct==1')
      ], ##TTLJ_WtoCB Reco 1, (file_path, tree_path, filterstr)
     
-    [('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/Mu/RunPermutationTree/Vcb_TTLJ_WtoCB_powheg.root','Permutation_Wrong',f'n_jets=={n_jets}'),
-     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2017/El/RunPermutationTree/Vcb_TTLJ_WtoCB_powheg.root','Permutation_Wrong',f'n_jets=={n_jets}')
+    [
+      ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','POGTightWithTightIso_Central/Result_Tree','chk_reco_correct==0'), ##TTLJ_WtoCB Reco 0
+     ('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/Mu/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','POGTightWithTightIso_Central/Result_Tree','decay_mode==43'),
+     #('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/El/RunResult/Central_Syst/Vcb_TTLJ_WtoCB_powheg.root','passTightID_Central/Result_Tree','chk_reco_correct==0'), ##TTLJ_WtoCB Reco 0
+     #('/data6/Users/isyoon/Vcb_Post_Analysis/Sample/2018/El/RunResult/Central_Syst/Vcb_TTLJ_powheg.root','passTightID_Central/Result_Tree','decay_mode==43')
      ] ##TTLJ_WtoCB cs decay
+    
   )
-data =  load_data(tree_path_filter_str=input_tuple,varlist=varlist,test_ratio=0,val_ratio=0)
+data =  load_data(tree_path_filter_str=input_tuple,varlist=varlist,test_ratio=0.1,val_ratio=0.2)
 arr = data['train_features']
 weights = data['train_weight']
 y=data['train_y']
 pred = model.predict_proba(arr)[:,1]
 postTrainingToolkit.ROC_AUC(score=pred,y=y,weight=weights,plot_path=folder_path)
-del data
 
-data =  load_data(tree_path_filter_str=input_tuple,varlist=varlist,test_ratio=0.1,val_ratio=0.2)
-arr = data['train_features']
-weights = data['train_weight']
-y=data['train_y']
 
 train_score = model.predict_proba(data['train_features'])[:,1]
 val_score = model.predict_proba(data['val_features'])[:,1]
