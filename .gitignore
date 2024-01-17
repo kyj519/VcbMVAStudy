@@ -16,6 +16,7 @@ lib/*.tar.gz
 *.zip
 *.png
 *.npy
+*.npz
 *.log
 *.out
 *.err
