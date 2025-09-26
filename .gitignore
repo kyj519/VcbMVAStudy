@@ -21,4 +21,5 @@ lib/*.tar.gz
 *.out
 *.err
 model_*
+**/old_models
 

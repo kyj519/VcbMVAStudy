@@ -47,52 +47,129 @@ def seperate_sig_bkg(df, branch="", target_Branch="y"):
 ROC_COLOR   = "#0072B2"  # blue
 BASELINE    = "#7F7F7F"  # gray
 
-def ROC_AUC(score, y, plot_path, weight=None, fname="ROC.png", style="CMS"):
-    # --- to numpy with minimal copying ---
-    s = np.asarray(score, dtype=np.float32)
-    yy = np.asarray(y, dtype=np.int8)
-    if weight is not None:
-        w = np.asarray(weight, dtype=np.float64)
-        # keep only finite & positive-weight samples
-        mask = np.isfinite(s) & np.isfinite(yy) & np.isfinite(w) & (w > 0)
-        s, yy, w = s[mask], yy[mask], w[mask]
-    else:
-        mask = np.isfinite(s) & np.isfinite(yy)
-        s, yy = s[mask], yy[mask]
-        w = None
-
-    # --- ROC & AUC (drop_intermediate reduces curve points = less memory/IO) ---
-    fpr, tpr, _ = roc_curve(yy, s, sample_weight=w, drop_intermediate=True)
-    auc = roc_auc_score(yy, s, sample_weight=w)
-
-    # --- Plot (mplhep) ---
+def ROC_AUC(score, y, plot_path, weight=None, fname="ROC.png", style="CMS",
+            scale="linear", labels=None,
+            title=None, subtitle=None,
+            extra_text=None, extra_loc="upper left", extra_kwargs=None,
+            legend_loc="lower right"):
+    import os
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import roc_curve, roc_auc_score
     try:
+        import mplhep as hep
         hep.style.use(style)
     except Exception:
-        pass  # fall back silently if style not found
+        pass
+
+    # normalize inputs to list-of-series
+    is_multi = isinstance(score, (list, tuple))
+    if not is_multi:
+        score_list  = [score]
+        y_list      = [y]
+        weight_list = [weight]
+    else:
+        score_list  = list(score)
+        y_list      = list(y) if isinstance(y, (list, tuple)) else [y]*len(score_list)
+        weight_list = list(weight) if isinstance(weight, (list, tuple)) else [weight]*len(score_list)
+
+    # fallback colors if user constants are undefined
+    try:
+        BASELINE
+    except NameError:
+        BASELINE = "0.5"
+    try:
+        ROC_COLOR
+    except NameError:
+        ROC_COLOR = None  # let matplotlib choose
 
     fig, ax = plt.subplots(figsize=(12.0, 9.0), dpi=150)
-    ax.plot([0, 1], [0, 1], ls="--", lw=1.5, color=BASELINE, label="Random")
-    ax.plot(fpr, tpr, lw=2.7, color=ROC_COLOR, label=f"ROC (AUC = {auc:.3f})")
 
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
+    # random baseline
+    if scale == "log":
+        y = np.logspace(-2, 0, 300)
+        ax.plot(y, y, ls="--", lw=1.5, label="Random")
+    else:
+        ax.plot([0, 1], [0, 1], ls="--", lw=1.5, label="Random")
+
+    aucs = []
+    for i, (s, yy, w) in enumerate(zip(score_list, y_list, weight_list)):
+        s  = np.asarray(s, dtype=np.float32)
+        yy = np.asarray(yy, dtype=np.int8)
+        if w is not None:
+            w = np.asarray(w, dtype=np.float64)
+            mask = np.isfinite(s) & np.isfinite(yy) & np.isfinite(w) & (w > 0)
+            s, yy, w = s[mask], yy[mask], w[mask]
+        else:
+            mask = np.isfinite(s) & np.isfinite(yy)
+            s, yy = s[mask], yy[mask]
+            w = None
+
+        fpr, tpr, _ = roc_curve(yy, s, sample_weight=w, drop_intermediate=True)
+        auc = roc_auc_score(yy, s, sample_weight=w)
+        aucs.append(auc)
+
+        lab = labels[i] if (labels and i < len(labels)) else (f"ROC (AUC = {auc:.3f})" if not is_multi else f"Fold {i} (AUC = {auc:.3f})")
+        ax.plot(fpr, tpr, lw=2.2, label=lab)
+
+    # axes cosmetics
+    if scale == "log":
+        ax.set_xscale("log")
+        ax.set_xlim(1e-2, 1.0)
+    else:
+        ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
     ax.set_xlabel("False Positive Rate")
     ax.set_ylabel("True Positive Rate")
     ax.grid(True, alpha=0.25, linestyle=":")
-    ax.legend(frameon=False, loc="lower right")
+    ax.legend(frameon=False, loc=legend_loc)
 
-    # Optional CMS-style label
+    # CMS-like label (safe to skip if mplhep missing)
     try:
         hep.cms.label(llabel="Preliminary", data=False, com=13, ax=ax)
     except Exception:
         pass
 
+    # Title & Subtitle
+    if title:
+        ax.set_title(title, loc="left", fontsize=18, pad=10)
+        if subtitle:
+            # subtitle를 제목 바로 아래에 살짝 작게
+            ax.text(0.0, 1.02, subtitle, transform=ax.transAxes, ha="left", va="bottom", fontsize=12)
+
+    # Extra text (multi-line supported)
+    if extra_text:
+        if isinstance(extra_text, (list, tuple)):
+            txt = "\n".join(map(str, extra_text))
+        else:
+            txt = str(extra_text)
+
+        # 위치 해석
+        loc_map = {
+            "upper left":  (0.02, 0.98, "left",  "top"),
+            "upper right": (0.98, 0.98, "right", "top"),
+            "lower left":  (0.02, 0.02, "left",  "bottom"),
+            "lower right": (0.98, 0.02, "right", "bottom"),
+        }
+        x, y, ha, va = loc_map.get(extra_loc, loc_map["upper left"])
+
+        kw = dict(
+            transform=ax.transAxes,
+            ha=ha, va=va,
+            fontsize=12,
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.6)
+        )
+        if extra_kwargs:
+            kw.update(extra_kwargs)
+
+        ax.text(x, y, txt, **kw)
+
+    # save
     os.makedirs(plot_path, exist_ok=True)
     out_path = os.path.join(plot_path, fname)
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
-    return auc
+    return aucs if is_multi else aucs[0]
 
 def NormalizeHist(sig, bkg):
     if sig.GetSumw2N() == 0:
@@ -359,6 +436,11 @@ def draw_feature_importance_mplhep(
     plt.close(fig)
 
     return {"png": out_png, "pdf": out_pdf}
+
+def _neff(th1):
+    s = sum(th1.GetBinContent(i) for i in range(1, th1.GetNbinsX()+1))
+    w2 = sum(th1.GetBinError(i)**2 for i in range(1, th1.GetNbinsX()+1))
+    return (s*s)/max(w2,1e-12)
     
 
 def numpy_hist_to_root(counts, sumW2, bins, name="histo", title=""):
@@ -457,9 +539,9 @@ def KS_test(
 
 
     # --- one RDF per split; filter by class inside RDF ---
-    bins = np.linspace(0,1,100)
-    bins_quantile_sig = quantile_edges(score_t[y_t==0], nbins=40)
-    bins_quantile_bkg = quantile_edges(score_t[y_t==1], nbins=40)
+    bins = np.linspace(0,1,50)
+    bins_quantile_sig = quantile_edges(score_v[y_v==0], nbins=40)
+    bins_quantile_bkg = quantile_edges(score_v[y_v==1],nbins=40)
     h_tr_sig, _ = np.histogram(score_t[(y_t == 0)], bins=bins_quantile_sig, weights=w_t[(y_t == 0)])
     h_tr_bkg, _ = np.histogram(score_t[(y_t == 1)], bins=bins_quantile_bkg, weights=w_t[(y_t == 1)])
     h_vl_sig, _ = np.histogram(score_v[(y_v == 0)], bins=bins_quantile_sig, weights=w_v[(y_v == 0)])
@@ -489,8 +571,9 @@ def KS_test(
     th1_tr_bkg_draw = numpy_hist_to_root(h_tr_bkg_draw, h_tr_bkg_w2_draw, bins, name="h_tr_bkg_draw", title="Train background")
     th1_vl_sig_draw = numpy_hist_to_root(h_vl_sig_draw, h_vl_sig_w2_draw, bins, name="h_vl_sig_draw", title="Validation signal")
     th1_vl_bkg_draw = numpy_hist_to_root(h_vl_bkg_draw, h_vl_bkg_w2_draw, bins, name="h_vl_bkg_draw", title="Validation background")
-
-
+    
+    print("Neff(train sig)=", _neff(th1_tr_sig), "Neff(val sig)=", _neff(th1_vl_sig))
+    print("Neff(train bkg)=", _neff(th1_tr_bkg), "Neff(val bkg)=", _neff(th1_vl_bkg))
 
     # --- KS (use matching classes!) ---
     # "M" = (ROOT option for more accurate distance); use as you prefer
@@ -498,17 +581,17 @@ def KS_test(
     kolB_max = th1_vl_bkg.KolmogorovTest(th1_tr_bkg, "M")
 
     # symmetric p-values (their "X" opt returns the p-value)
-    #kolS = th1_tr_sig.KolmogorovTest(th1_vl_sig, "X")
-    #kolB = th1_tr_bkg.KolmogorovTest(th1_vl_bkg, "X")
-    kolS = th1_vl_sig.KolmogorovTest(th1_tr_sig, "X")
-    kolB = th1_vl_bkg.KolmogorovTest(th1_tr_bkg, "X")
+    kolS = th1_tr_sig.KolmogorovTest(th1_vl_sig, "X")
+    kolB = th1_tr_bkg.KolmogorovTest(th1_vl_bkg, "X")
+    #kolS = th1_vl_sig.KolmogorovTest(th1_tr_sig, "X")
+    #kolB = th1_vl_bkg.KolmogorovTest(th1_tr_bkg, "X")
     print(f"Signal, dist = {kolS_max}, p-value={kolS}")
     print(f"Background, dist = {kolB_max}, p-value={kolB}")
     
 
     draw_overall_mplhep(th1_tr_sig_draw, th1_vl_sig_draw, th1_tr_bkg_draw, th1_vl_bkg_draw, plot_dir=plotPath, kolS=kolS, kolB=kolB, postfix=postfix)
-    draw_overall_mplhep(th1_tr_sig, th1_vl_sig, None, None, plot_dir=plotPath, kolS=kolS, kolB=None, postfix=postfix+"_sig_quantile")
-    draw_overall_mplhep(None, None, th1_tr_bkg, th1_vl_bkg, plot_dir=plotPath, kolS=None, kolB=kolB, postfix=postfix+"_bkg_quantile")
+    #draw_overall_mplhep(th1_tr_sig, th1_vl_sig, None, None, plot_dir=plotPath, kolS=kolS, kolB=None, postfix=postfix+"_sig_quantile")
+    #draw_overall_mplhep(None, None, th1_tr_bkg, th1_vl_bkg, plot_dir=plotPath, kolS=None, kolB=kolB, postfix=postfix+"_bkg_quantile")
     return kolS, kolB
    
 # def getECDF(data1, data2):

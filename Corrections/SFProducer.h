@@ -1,131 +1,180 @@
-//
-//
-//
-//
-//
+#ifndef JET_SF_PRODUCER_H
+#define JET_SF_PRODUCER_H
+
 #include <string>
+#include <memory>
+#include <map>
+#include <vector>
+#include <cmath>
 #include <iostream>
-#include <algorithm>
+#include <sstream>
+#include <stdexcept>
+#include <ROOT/RVec.hxx>
+using ROOT::VecOps::RVec;
+
 #include "TFile.h"
-#include "TH2F.h"
+#include "TH2D.h"
 
-using namespace std;
-
-class SFProducer
+class JetSFProducer
 {
-
 public:
-  SFProducer(string, string, string);
+  JetSFProducer(std::string era,
+                std::string file,
+                std::string sample,
+                std::string tagKind,
+                int whatMode,
+                bool useAbsEta = false)
+      : m_era(std::move(era)),
+        m_fileName(std::move(file)),
+        m_sample(std::move(sample)),
+        m_tagKind(std::move(tagKind)),
+        m_whatMode(whatMode),
+        m_useAbsEta(useAbsEta) {}
 
-  void LoadSF();
+  JetSFProducer(std::string era,
+                std::string file,
+                std::string sample,
+                std::string tagKind,
+                bool useAbsEta = true)
+      : JetSFProducer(std::move(era), std::move(file), std::move(sample),
+                      std::move(tagKind), -1, useAbsEta) {}
 
-  float GetSF(int, float, int, int, int);
-  float GetSF_TTLJ(int, float, int, int, int);
-  float GetSF_none_TTLJ(int n_jets, float ht);
+  void Load()
+  {
+    std::cout << "[JetSFProducer] Load SFs from " << m_fileName
+              << " (era=" << m_era << ", sample=" << m_sample
+              << ", tag=" << m_tagKind
+              << ", mode=" << m_whatMode << ")\n";
 
-  TFile *m_SFFile = nullptr;
-  TH2F *m_SFHist = nullptr;
-  map<string, TH2F *> map_Hist_SF;
+    std::unique_ptr<TFile> f(TFile::Open(m_fileName.c_str(), "READ"));
+    if (!f || f->IsZombie())
+    {
+      throw std::runtime_error("Cannot open file: " + m_fileName);
+    }
+
+    // 경로/이름 만들기
+    // 예) D/TTLJ_4/Ratio_D_TTLJ_4_B_Tag_Nominal_B
+    const std::string modeSuffix = (m_whatMode >= 0) ? ("_" + std::to_string(m_whatMode)) : "";
+    const std::string dir = "D/" + m_sample + modeSuffix;
+    const std::string base = "Ratio_D_" + m_sample + modeSuffix + "_" + m_tagKind + "_Nominal_";
+
+    // B, C, L 3개를 로드
+    m_h["B"] = fetchAndDetachTH2D(f.get(), dir + "/" + base + "B");
+    m_h["C"] = fetchAndDetachTH2D(f.get(), dir + "/" + base + "C");
+    m_h["L"] = fetchAndDetachTH2D(f.get(), dir + "/" + base + "L");
+
+    // 축 범위 저장 (clamp에 사용)
+    // 세 히스토의 binning이 같다고 가정
+    if (m_h["B"])
+      cacheAxisRanges(m_h["B"]);
+    else if (m_h["C"])
+      cacheAxisRanges(m_h["C"]);
+    else if (m_h["L"])
+      cacheAxisRanges(m_h["L"]);
+    else
+    {
+      throw std::runtime_error("No valid histograms loaded.");
+    }
+  }
+
+  /// std::vector 버전
+  float GetEventSF(const std::vector<float> &pts,
+                   const std::vector<float> &etas,
+                   const std::vector<int> &flavors) const
+  {
+    const size_t n = std::min({pts.size(), etas.size(), flavors.size()});
+    float sf = 1.f;
+    for (size_t i = 0; i < n; ++i)
+    {
+      sf *= GetJetSF(pts[i], etas[i], flavors[i]);
+    }
+    return sf;
+  }
+
+  float GetEventSF(const ROOT::RVec<float> &pts,
+                   const ROOT::RVec<float> &etas,
+                   const ROOT::RVec<int> &flavors) const
+  {
+    const size_t n = std::min({pts.size(), etas.size(), flavors.size()});
+    float sf = 1.f;
+    for (size_t i = 0; i < n; ++i)
+    {
+      sf *= GetJetSF(pts[i], etas[i], flavors[i]);
+    }
+    return sf;
+  }
+
+  /// 필요 시 개별 젯 SF만 계산
+  float GetJetSF(float pt, float eta, int flavor) const
+  {
+    const char fl = flavorLetter(flavor);
+    auto it = m_h.find(std::string(1, fl));
+    if (it == m_h.end() || !it->second)
+    {
+      // fallback: 없으면 runtime 에러
+      throw std::runtime_error("Jet flavor " + std::string(1, fl) + " not found in histograms.");
+    }
+
+    const float x = clamp(pt, m_xmin, m_xmax * 0.9999f);
+    const float yraw = m_useAbsEta ? std::fabs(eta) : eta;
+    const float y = clamp(yraw, m_ymin, m_ymax * 0.9999f);
+
+    const int bin = it->second->FindBin(x, y);
+    return it->second->GetBinContent(bin);
+  }
 
 private:
-  string m_eraName;
-  string m_sfFileName;
-  string m_sampleName;
+  static TH2D *fetchAndDetachTH2D(TFile *f, const std::string &name)
+  {
+    TH2D *h = dynamic_cast<TH2D *>(f->Get(name.c_str()));
+    if (!h)
+    {
+      std::cerr << "[JetSFProducer] WARNING: hist not found: " << name << "\n";
+      return nullptr;
+    }
+    TH2D *hc = (TH2D *)h->Clone();
+    hc->SetDirectory(nullptr);
+    return hc;
+  }
+
+  static inline char flavorLetter(int hadFlavor)
+  {
+    const int af = std::abs(hadFlavor);
+    if (af == 5)
+      return 'B';
+    if (af == 4)
+      return 'C';
+    return 'L';
+  }
+
+  static inline float clamp(float v, float lo, float hi)
+  {
+    return std::max(lo, std::min(v, hi));
+  }
+
+  void cacheAxisRanges(TH2D *h)
+  {
+    if (!h)
+      return;
+    m_xmin = h->GetXaxis()->GetXmin();
+    m_xmax = h->GetXaxis()->GetXmax();
+    m_ymin = h->GetYaxis()->GetXmin();
+    m_ymax = h->GetYaxis()->GetXmax();
+  }
+
+private:
+  std::string m_era;
+  std::string m_fileName;
+  std::string m_sample;
+  std::string m_tagKind; // "B_Tag" or "C_Tag"
+  int m_whatMode = -1;
+  bool m_useAbsEta = true;
+
+  std::map<std::string, TH2D *> m_h; // "B","C","L"
+
+  // axis cache
+  float m_xmin = 0, m_xmax = 0;
+  float m_ymin = 0, m_ymax = 0;
 };
 
-SFProducer::SFProducer(string _eraName, string _sfFileName, string _sample)
-{
-  cout << "SFProducerPUJetId::SFProducerPUJetId()::In Constructor" << endl;
-  m_eraName = _eraName;
-  m_sfFileName = _sfFileName;
-  m_sampleName = _sample;
-}
-
-void SFProducer::LoadSF()
-{
-  cout << "SFProducerPUJetId::LoadSF()::Load SF for era = " << m_eraName << ", sample = " << m_sampleName << endl;
-
-  //
-  // Load SF
-  //
-  m_SFFile = new TFile(m_sfFileName.c_str(), "READ");
-  if (m_sampleName == "TTLJ")
-  {
-    string histName_2 = m_sampleName + "_2/Ratio_" + m_sampleName + "_2_B_Tag_Nominal";
-    string histName_4 = m_sampleName + "_4/Ratio_" + m_sampleName + "_4_B_Tag_Nominal";
-    string histName_45 = m_sampleName + "_45/Ratio_" + m_sampleName + "_45_B_Tag_Nominal";
-    string histName_BB_2 = m_sampleName + "_BB_2/Ratio_" + m_sampleName + "_BB_2_B_Tag_Nominal";
-    string histName_BB_4 = m_sampleName + "_BB_4/Ratio_" + m_sampleName + "_BB_4_B_Tag_Nominal";
-    string histName_BB_45 = m_sampleName + "_BB_45/Ratio_" + m_sampleName + "_BB_45_B_Tag_Nominal";
-    string histName_CC_2 = m_sampleName + "_CC_2/Ratio_" + m_sampleName + "_CC_2_B_Tag_Nominal";
-    string histName_CC_4 = m_sampleName + "_CC_4/Ratio_" + m_sampleName + "_CC_4_B_Tag_Nominal";
-    string histName_CC_45 = m_sampleName + "_CC_45/Ratio_" + m_sampleName + "_CC_45_B_Tag_Nominal";
-
-    map_Hist_SF.insert({"002", (TH2F *)m_SFFile->Get(histName_2.c_str())});
-    map_Hist_SF.insert({"004", (TH2F *)m_SFFile->Get(histName_4.c_str())});
-    map_Hist_SF.insert({"0045", (TH2F *)m_SFFile->Get(histName_45.c_str())});
-    map_Hist_SF.insert({"102", (TH2F *)m_SFFile->Get(histName_BB_2.c_str())});
-    map_Hist_SF.insert({"104", (TH2F *)m_SFFile->Get(histName_BB_4.c_str())});
-    map_Hist_SF.insert({"1045", (TH2F *)m_SFFile->Get(histName_BB_45.c_str())});
-    map_Hist_SF.insert({"012", (TH2F *)m_SFFile->Get(histName_CC_2.c_str())});
-    map_Hist_SF.insert({"014", (TH2F *)m_SFFile->Get(histName_CC_4.c_str())});
-    map_Hist_SF.insert({"0145", (TH2F *)m_SFFile->Get(histName_CC_45.c_str())});
-  }
-  else
-  {
-    string histName = m_sampleName + "/Ratio_" + m_sampleName + "_B_Tag_Nominal";
-    m_SFHist = (TH2F *)m_SFFile->Get(histName.c_str());
-  }
-}
-
-//
-//
-//
-float SFProducer::GetSF(int n_jets, float ht, int isBB = 0, int isCC = 0, int whatMode = 0)
-{
-  if (m_sampleName == "TTLJ")
-  {
-    return GetSF_TTLJ(n_jets, ht, isBB, isCC, whatMode);
-  }
-  else
-    return GetSF_none_TTLJ(n_jets, ht);
-}
-
-float SFProducer::GetSF_TTLJ(int n_jets, float ht, int isBB, int isCC, int whatMode)
-{
-  float sf = 1.;
-
-  if (n_jets < 4)
-    n_jets = 4;
-  else if (n_jets >= 30)
-    n_jets = 30;
-
-  if (ht < 80.)
-    ht = 80.;
-  else if (ht >= 1000)
-    ht = 999.9;
-  // cout << "isBB is " << isBB << " isCC is " << isCC << " whatMode" << whatMode << endl;
-  string desiredKey = std::to_string(isBB) + std::to_string(isCC) + std::to_string(whatMode);
-  m_SFHist = map_Hist_SF[desiredKey];
-  // cout << m_SFHist->GetName() << endl;
-  sf = m_SFHist->GetBinContent(m_SFHist->FindBin(n_jets, ht));
-  return sf;
-}
-
-float SFProducer::GetSF_none_TTLJ(int n_jets, float ht)
-{
-  float sf = 1.;
-
-  if (n_jets < 4)
-    n_jets = 4;
-  else if (n_jets >= 30)
-    n_jets = 30;
-
-  if (ht < 80.)
-    ht = 80.;
-  else if (ht >= 1000)
-    ht = 999.9;
-
-  sf = m_SFHist->GetBinContent(m_SFHist->FindBin(n_jets, ht));
-  return sf;
-}
+#endif
