@@ -30,16 +30,28 @@ from tqdm.auto import tqdm
 import TrainingConfig
 
 # Local
-from helpers import compute_class_counts, pick_best_device, task, predict_logit_fast, explain_fast, predict_proba_fast, predict_log_proba
+from helpers import (
+    compute_class_counts,
+    pick_best_device,
+    task,
+    predict_logit_fast,
+    explain_fast,
+    predict_proba_fast,
+    predict_log_proba,
+    _discover_folds,
+    _pick_zip,
+    _load_training_config_module,
+    view_fold
+)
 from eval_functions import ClassBalancedFocalLoss, CBFocalLossMetric
 
-era = ''
+era = ""
 
 from root_data_loader import load_data, classWtoSampleW
 from root_data_loader_awk import load_root_as_dataset_kfold as load_data_kfold
 from root_data_loader_awk import save_dataset_npz_json, load_dataset_npz_json
 
-mp.set_sharing_strategy('file_system')
+mp.set_sharing_strategy("file_system")
 
 
 # 사용 예시
@@ -55,18 +67,25 @@ def train(
     pretrained_model=None,
     checkpoint=None,
     add_year_index=0,
-    fold=0
+    fold=0,
+    TC=None,
 ):
+    if TC is None:
+        raise ValueError("TC (TrainingConfig module) must be provided.")
+
+    TabNetTrainConfig = TC.TabNetTrainConfig
+
     # checkpoint와 pretrained를 동시에 쓰지 않기
     if checkpoint is not None and pretrained_model is not None:
         print("하나만 해라")
 
     fine_tune = pretrained_model is not None
-    out_dir = os.path.join(model_save_path, "FineTune") if fine_tune else model_save_path
+    out_dir = (
+        os.path.join(model_save_path, "FineTune") if fine_tune else model_save_path
+    )
     os.makedirs(out_dir, exist_ok=True)
 
-    TanNetTrainConfig = TrainingConfig.TabNetTrainConfig
-    cfg = TanNetTrainConfig(
+    cfg = TabNetTrainConfig(
         floss_gamma=floss_gamma,
         fine_tune=fine_tune,
         pretrained_model=pretrained_model,
@@ -89,10 +108,16 @@ def train(
     data_npz = os.path.join(out_dir, "data.npz")
     if os.path.exists(data_npz):
         while True:
-            ans = input(f"{data_npz} already exists. Do you want to overwrite it? (y/n): ").strip().lower()
+            ans = (
+                input(
+                    f"{data_npz} already exists. Do you want to overwrite it? (y/n): "
+                )
+                .strip()
+                .lower()
+            )
             if ans == "y":
                 data = load_data_kfold(**data_info)
-                
+
                 save_dataset_npz_json(model_save_path, data)
                 break
             elif ans == "n":
@@ -107,10 +132,12 @@ def train(
 
     # ----- 모델/로스/메트릭/트레이닝 인포 -----
     device = pick_best_device(6.0)
-    data_k = TrainingConfig.view_fold(data, fold)
+    data_k = view_fold(data, fold)
     out_dir = os.path.join(out_dir, f"fold{fold}")
     clf, model_info = cfg.build_model(data_k, device=device, checkpoint=checkpoint)
-    loss_fn, eval_metrics, counts_train, _ = cfg.build_loss_and_metrics(data_k, device=device)
+    loss_fn, eval_metrics, counts_train, _ = cfg.build_loss_and_metrics(
+        data_k, device=device
+    )
     train_info = cfg.build_train_info(data_k, loss_fn, eval_metrics, out_dir)
 
     # ----- 정보 파일 저장(+ 설정 py/json 보존) -----
@@ -121,16 +148,14 @@ def train(
         train_info=train_info,
         floss_gamma=cfg.floss_gamma,
         counts_train=counts_train,
-        cfg=cfg,                    # 현재 설정 인스턴스
-        save_config_py=True,        # 이 설정이 정의된 .py 그대로 복사
-        save_config_json=True,      # 설정 JSON도 함께 저장
+        cfg=cfg,  # 현재 설정 인스턴스
+        save_config_py=True,  # 이 설정이 정의된 .py 그대로 복사
+        save_config_json=True,  # 설정 JSON도 함께 저장
     )
 
     # ----- 학습/저장/플롯 -----
     clf.fit(**train_info)
     clf.save_model(os.path.join(out_dir, "model"))
-
-
 
 
 # def plot(model_save_path, checkpoint_path=None):
@@ -155,10 +180,10 @@ def train(
 #             model.load_model(checkpoint_path)
 #             m = re.search(r"model_epoch(\d+)\.zip$", checkpoint_path)
 #             epoch_str = m.group(1)   # '000'
-#             epoch_int = int(epoch_str)  
+#             epoch_int = int(epoch_str)
 #             model_save_path = os.path.join(model_save_path, 'plot' ,f"ckpt{epoch_str}")
 #             os.makedirs(model_save_path, exist_ok=True)
-            
+
 #     with task("ROC AUC evaluation and plotting"):
 #         y_inv = np.logical_not(data["test_y"]).astype(int)
 #         proba0 = predict_proba_fast(model, data["test_features"], batch_size=BATCH_LOAD)[:, 0]
@@ -186,8 +211,7 @@ def train(
 #     #         train_bkg_mask = data["train_y"] == bkg_idx
 #     #         val_sig_mask = data["val_y"] == sig_idx
 #     #         val_bkg_mask = data["val_y"] == bkg_idx
-            
-          
+
 
 #     #         kolS, kolB = postTrainingToolkit.KS_test(
 #     #             train_score=np.concatenate((train_score[train_sig_mask, sig_idx], train_score[train_bkg_mask, bkg_idx]), axis=0),
@@ -255,7 +279,7 @@ def train(
 #                 use_weight=False
 #             )
 #             print(f"  - p-value (Signal): {kolS:.3g}, (Background): {kolB:.3g}")
-            
+
 #     with task("Explainability (masks) and saving"):
 #         res_explain, res_masks = explain_fast(model, data["test_features"], normalize=False, batch_size = BATCH_LOAD)
 #         np.save(os.path.join(model_save_path, "explain.npy"), res_explain)
@@ -294,7 +318,7 @@ def plot(model_save_path, checkpoint_path=None):
     from scipy.special import softmax, logsumexp
 
     BATCH_LOAD = 8192 * 64
-    
+
     with task(f"[{os.path.basename(model_save_path)}] Loading dataset (data.npz)"):
         data = load_dataset_npz_json(model_save_path)
 
@@ -307,55 +331,21 @@ def plot(model_save_path, checkpoint_path=None):
         out[neg] = e / (1.0 + e)
         return out
 
-    # ---------- helper: fold discovery ----------
-    def _discover_folds(root):
-        """
-        root 하위에서 data.npz가 존재하고, 폴더명이 fold 패턴을 포함하는 디렉터리를 찾음.
-        예: Fold0, fold_1, fold-2 ...
-        """
-        pat = re.compile(r'(?i)fold[\s_\-]*([0-9]+)')
-        folds = []
-        for name in sorted(os.listdir(root)):
-            p = os.path.join(root, name)
-            if not os.path.isdir(p):
-                continue
-            m = pat.search(name)
-            if m:
-                folds.append((int(m.group(1)), name, p))
-        # fold 인덱스 기준 정렬
-        folds.sort(key=lambda x: x[0])
-        return folds  # list of (idx, dirname, abspath)
-
-    # ---------- helper: pick model zip in a dir ----------
-    def _pick_zip(model_dir):
-        """
-        model_dir 안의 .zip 중에서 model_epoch###.zip 패턴이 있으면 가장 큰 epoch 선택,
-        없으면 사전순 첫 번째 파일 선택.
-        """
-        zips = [z for z in os.listdir(model_dir) if z.endswith(".zip")]
-        if not zips:
-            return None
-        best = None
-        best_epoch = -1
-        for z in zips:
-            m = re.search(r"model_epoch(\d+)\.zip$", z)
-            if m:
-                ep = int(m.group(1))
-                if ep > best_epoch:
-                    best_epoch = ep
-                    best = z
-        if best is not None:
-            return os.path.join(model_dir, best)
-        # fallback: lexicographically first
-        zips.sort()
-        return os.path.join(model_dir, zips[0])
-
     # ---------- single-run core (reused per fold) ----------
-    def _run_one(run_dir, out_parent_dir, fold, checkpoint_override=None):
+    def _run_one(
+        run_dir,
+        out_parent_dir,
+        fold,
+        checkpoint_override=None,
+        TC_local=None,
+        class_labels=None,
+    ):
         # out_parent_dir: 폴드별 plot 저장할 부모 디렉토리
+        if TC_local is None:
+            raise ValueError("TC_local (TrainingConfig module) must be provided.")
+
         with task(f"[{os.path.basename(run_dir)}] Loading dataset (data.npz)"):
-            data_k = TrainingConfig.view_fold(data, fold)
-            
+            data_k = view_fold(data, fold)
 
         with task(f"[{os.path.basename(run_dir)}] Model loading"):
             model = TabNetClassifier()
@@ -370,7 +360,9 @@ def plot(model_save_path, checkpoint_path=None):
                 print(f"  - Loaded from: {ckpt}")
             else:
                 model.load_model(checkpoint_override)
-                m = re.search(r"model_epoch(\d+)\.zip$", os.path.basename(checkpoint_override))
+                m = re.search(
+                    r"model_epoch(\d+)\.zip$", os.path.basename(checkpoint_override)
+                )
                 epoch_str = m.group(1) if m else "UNK"
                 out_dir = os.path.join(out_parent_dir, f"ckpt{epoch_str}")
                 os.makedirs(out_dir, exist_ok=True)
@@ -378,15 +370,12 @@ def plot(model_save_path, checkpoint_path=None):
 
         # ---------- ROC on test ----------
         with task(f"[{os.path.basename(run_dir)}] ROC AUC evaluation and plotting"):
-            spec = importlib.util.spec_from_file_location("TrainingConfig_Local", os.path.join(run_dir, "TabNetTrainConfig.py"))
-            m = importlib.util.module_from_spec(spec); sys.modules["TrainingConfig_Local"] = m; spec.loader.exec_module(m)
-            obj = m.TabNetTrainConfig()
-            class_path, class_labels = obj.build_input_tuple("", "", "All")
-
 
             # binary 가정: class 0에 대한 점수 사용 (기존 코드 유지)
             y_inv = np.logical_not(data_k["val_y"]).astype(int)
-            logit = predict_logit_fast(model, data_k["val_features"], batch_size=BATCH_LOAD)
+            logit = predict_logit_fast(
+                model, data_k["val_features"], batch_size=BATCH_LOAD
+            )
             proba0 = softmax(logit, axis=1)[:, 0]
             num_class = logit.shape[1]
             label_str = f"{class_labels[0]} (0) vs Others"
@@ -408,34 +397,34 @@ def plot(model_save_path, checkpoint_path=None):
                 # weight=data.get("test_weight", None),
             )
 
-            scores_by_bkg =[]
+            scores_by_bkg = []
             labels_by_bkg = []
             yinv_by_bkg = []
-            
+
             for bkg_idx in range(1, num_class):
                 sig_idx = 0
                 local_signal_mask = data_k["val_y"] == sig_idx
                 local_bkg_mask = data_k["val_y"] == bkg_idx
                 local_mask = local_signal_mask | local_bkg_mask
-                local_y = np.where(data_k["val_y"][local_mask] == sig_idx, 1, 0).astype(np.int8)
+                local_y = np.where(data_k["val_y"][local_mask] == sig_idx, 1, 0).astype(
+                    np.int8
+                )
                 local_margin = logit[local_mask, sig_idx] - logit[local_mask, bkg_idx]
                 local_score = sigmoid_stable(local_margin)
                 label_str = f"{class_labels[sig_idx]} ({sig_idx}) vs {class_labels[bkg_idx]} ({bkg_idx})"
-                
-                
+
                 scores_by_bkg.append(local_score)
                 yinv_by_bkg.append(local_y)
 
-                
                 local_auc = postTrainingToolkit.ROC_AUC(
                     score=local_score,
                     y=local_y,
                     plot_path=out_dir,
                     fname=f"ROC_{sig_idx}_VS_{bkg_idx}.png",
-                    extra_text=label_str
+                    extra_text=label_str,
                     # weight=data.get("test_weight", None),
                 )
-                
+
                 labels_by_bkg.append(label_str + f" (AUC: {local_auc:.4f})")
 
                 postTrainingToolkit.ROC_AUC(
@@ -444,7 +433,7 @@ def plot(model_save_path, checkpoint_path=None):
                     plot_path=out_dir,
                     fname=f"ROC_{sig_idx}_VS_{bkg_idx}_log.png",
                     scale="log",
-                    extra_text=label_str
+                    extra_text=label_str,
                     # weight=data.get("test_weight", None),
                 )
 
@@ -453,7 +442,7 @@ def plot(model_save_path, checkpoint_path=None):
                 y=yinv_by_bkg,
                 plot_path=out_dir,
                 fname=f"ROC_class_compare.png",
-                labels=labels_by_bkg
+                labels=labels_by_bkg,
             )
             postTrainingToolkit.ROC_AUC(
                 score=scores_by_bkg,
@@ -461,15 +450,17 @@ def plot(model_save_path, checkpoint_path=None):
                 plot_path=out_dir,
                 fname=f"ROC_class_compare_log.png",
                 labels=labels_by_bkg,
-                scale="log"
+                scale="log",
             )
 
         # ---------- KS (pairwise margin, multi-class 지원) ----------
         with task(f"[{os.path.basename(run_dir)}] Train/Validation predictions"):
-            train_score = predict_logit_fast(model, data_k["train_features"], batch_size=BATCH_LOAD)
-            val_score   = predict_logit_fast(model, data_k["val_features"],   batch_size=BATCH_LOAD)
-
-
+            train_score = predict_logit_fast(
+                model, data_k["train_features"], batch_size=BATCH_LOAD
+            )
+            val_score = predict_logit_fast(
+                model, data_k["val_features"], batch_size=BATCH_LOAD
+            )
 
         with task(f"[{os.path.basename(run_dir)}] KS test and plotting"):
             num_class = train_score.shape[1]
@@ -479,10 +470,10 @@ def plot(model_save_path, checkpoint_path=None):
             vl_s = softmax(val_score, axis=1)[:, 0]
 
             tr_y = np.where(data_k["train_y"] == sig_idx, 0, 1).astype(np.int8)
-            vl_y = np.where(data_k["val_y"]  == sig_idx, 0, 1).astype(np.int8)
+            vl_y = np.where(data_k["val_y"] == sig_idx, 0, 1).astype(np.int8)
 
             tr_w = data_k.get("train_weight", np.ones_like(tr_y, dtype=np.float64))
-            vl_w = data_k.get("val_weight",   np.ones_like(vl_y, dtype=np.float64))
+            vl_w = data_k.get("val_weight", np.ones_like(vl_y, dtype=np.float64))
 
             kolS, kolB = postTrainingToolkit.KS_test(
                 train_score=tr_s,
@@ -493,18 +484,20 @@ def plot(model_save_path, checkpoint_path=None):
                 val_y=vl_y,
                 plotPath=out_dir,
                 postfix=f"pair_sig{sig_idx}_bkg{bkg_idx}",
-                use_weight=False
+                use_weight=False,
             )
             print(f"  - p-value (Signal): {kolS:.3g}, (Background): {kolB:.3g}")
 
             for sig_idx, bkg_idx in combinations(range(num_class), 2):
-                tr_mask = (data_k["train_y"] == sig_idx) | (data_k["train_y"] == bkg_idx)
-                vl_mask = (data_k["val_y"]   == sig_idx) | (data_k["val_y"]   == bkg_idx)
+                tr_mask = (data_k["train_y"] == sig_idx) | (
+                    data_k["train_y"] == bkg_idx
+                )
+                vl_mask = (data_k["val_y"] == sig_idx) | (data_k["val_y"] == bkg_idx)
 
                 z_tr_sig = train_score[tr_mask, sig_idx]
                 z_tr_bkg = train_score[tr_mask, bkg_idx]
-                z_vl_sig =  val_score[vl_mask,  sig_idx]
-                z_vl_bkg =  val_score[vl_mask,  bkg_idx]
+                z_vl_sig = val_score[vl_mask, sig_idx]
+                z_vl_bkg = val_score[vl_mask, bkg_idx]
 
                 tr_margin = z_tr_sig - z_tr_bkg
                 vl_margin = z_vl_sig - z_vl_bkg
@@ -512,11 +505,19 @@ def plot(model_save_path, checkpoint_path=None):
                 tr_s = sigmoid_stable(tr_margin)
                 vl_s = sigmoid_stable(vl_margin)
 
-                tr_y = np.where(data_k["train_y"][tr_mask] == sig_idx, 0, 1).astype(np.int8)
-                vl_y = np.where(data_k["val_y"][vl_mask]   == sig_idx, 0, 1).astype(np.int8)
+                tr_y = np.where(data_k["train_y"][tr_mask] == sig_idx, 0, 1).astype(
+                    np.int8
+                )
+                vl_y = np.where(data_k["val_y"][vl_mask] == sig_idx, 0, 1).astype(
+                    np.int8
+                )
 
-                tr_w = data_k.get("train_weight", np.ones_like(tr_y, dtype=np.float64))[tr_mask]
-                vl_w = data_k.get("val_weight",   np.ones_like(vl_y, dtype=np.float64))[vl_mask]
+                tr_w = data_k.get("train_weight", np.ones_like(tr_y, dtype=np.float64))[
+                    tr_mask
+                ]
+                vl_w = data_k.get("val_weight", np.ones_like(vl_y, dtype=np.float64))[
+                    vl_mask
+                ]
 
                 kolS, kolB = postTrainingToolkit.KS_test(
                     train_score=tr_s,
@@ -527,26 +528,30 @@ def plot(model_save_path, checkpoint_path=None):
                     val_y=vl_y,
                     plotPath=out_dir,
                     postfix=f"pair_sig{sig_idx}_bkg{bkg_idx}",
-                    use_weight=False
+                    use_weight=False,
                 )
                 print(f"  - p-value (Signal): {kolS:.3g}, (Background): {kolB:.3g}")
 
         # ---------- Explainability & Feature importance ----------
         with task(f"[{os.path.basename(run_dir)}] Explainability (masks) and saving"):
-            res_explain, res_masks = explain_fast(model, data_k["val_features"], normalize=False, batch_size=BATCH_LOAD)
+            res_explain, res_masks = explain_fast(
+                model, data_k["val_features"], normalize=False, batch_size=BATCH_LOAD
+            )
             np.save(os.path.join(out_dir, "explain.npy"), res_explain)
-            np.save(os.path.join(out_dir, "mask.npy"),    res_masks)
+            np.save(os.path.join(out_dir, "mask.npy"), res_masks)
             # NOTE: 기존 코드 유지 (train_y 저장). 필요하면 test_y로 바꿔도 됨.
-            np.save(os.path.join(out_dir, "y.npy"),       data_k["val_y"])
+            np.save(os.path.join(out_dir, "y.npy"), data_k["val_y"])
 
             M_explain = res_explain
             sum_explain = M_explain.sum(axis=0)
             feature_importances_ = sum_explain / np.sum(sum_explain)
             print(feature_importances_)
 
-        with task(f"[{os.path.basename(run_dir)}] Variable list loading and FI plotting (mplhep)"):
+        with task(
+            f"[{os.path.basename(run_dir)}] Variable list loading and FI plotting (mplhep)"
+        ):
             info_arr = np.load(os.path.join(run_dir, "info.npy"), allow_pickle=True)[()]
-            varlist = list(info_arr['data_info']['varlist'])
+            varlist = list(info_arr["data_info"]["varlist"])
             if "weight" in varlist:
                 varlist.remove("weight")
             if len(varlist) != len(feature_importances_):
@@ -569,11 +574,6 @@ def plot(model_save_path, checkpoint_path=None):
     # =========================
     # main flow: fold-aware
     # =========================
-    folds = _discover_folds(model_save_path)
-    if not folds:
-        raise RuntimeError(f"No folds found under {model_save_path}.")
-    print(f"[fold-aware] Found {len(folds)} folds: {[name for _, name, _ in folds]}")
-
 
     folds = _discover_folds(model_save_path)
     if not folds:
@@ -581,23 +581,30 @@ def plot(model_save_path, checkpoint_path=None):
     print(f"[fold-aware] Found {len(folds)} folds: {[name for _, name, _ in folds]}")
 
     scores_per_fold = []
-    yinv_per_fold   = []
-    labels          = []
+    yinv_per_fold = []
+    labels = []
 
     for idx, name, run_dir in folds:
         fold_plot_dir = os.path.join(run_dir, "plot")
         os.makedirs(fold_plot_dir, exist_ok=True)
+
+        cfg_path = os.path.join(run_dir, "TabNetTrainConfig.py")
+        TC_local_cfg = _load_training_config_module(cfg_path)
+        obj = TC_local_cfg.TabNetTrainConfig()
+        _, class_labels = obj.build_input_tuple("","","")
 
         res = _run_one(
             run_dir=run_dir,
             out_parent_dir=fold_plot_dir,
             checkpoint_override=checkpoint_path,
             fold=idx,
+            TC_local=TC_local_cfg,
+            class_labels=class_labels,
         )
         scores_per_fold.append(res["val_score"])
         yinv_per_fold.append(res["val_y_inv"])
         labels.append(f"Fold {idx}")
-        
+
     with task("[per-fold] ROC AUC overlay over all folds"):
         summary_dir = os.path.join(model_save_path, "plot", "_folds")
         os.makedirs(summary_dir, exist_ok=True)
@@ -622,290 +629,287 @@ def plot(model_save_path, checkpoint_path=None):
         )
 
         from sklearn.metrics import roc_auc_score
+
         for lab, s, yy in zip(labels, scores_per_fold, yinv_per_fold):
             print(f"  - {lab}: AUC = {roc_auc_score(yy, s):.4f}")
 
         print(f"[per-fold] Saved overlay ROC plots to: {summary_dir}")
 
+
 def infer_and_write(root_file, input_model_path, new_branch_name, model_folder):
+    folds = _discover_folds(input_model_path)
+    if not folds:
+        raise RuntimeError(f"No folds found under {input_model_path}.")
+    print(f"[fold-aware] Found {len(folds)} folds: {[name for _, name, _ in folds]}")
+    model_folds = {}
+
+    for idx, name, run_dir in folds:
+        this_model = TabNetClassifier()
+        model_zip = _pick_zip(run_dir)
+        if model_zip is None:
+            raise FileNotFoundError(f"No model .zip file found in {run_dir}")
+        this_model.load_model(model_zip)
+        model_folds[idx] = this_model
+        print(f"  - Loaded fold {idx} from: {model_zip}")
+
+    first_run_dir = folds[0][2]
+    data_info = np.load(os.path.join(first_run_dir, "info.npy"), allow_pickle=True)
+    data_info = data_info[()]
+    data_info = data_info["data_info"]
+    num_class = len(data_info["tree_path_filter_str"])
+    data_info["tree_path_filter_str"] = [[(root_file, "Result_Tree", "")]]
+    data_info["infer_mode"] = True
+    data = load_data_kfold(**data_info)
+    if len(model_folds) != len(data["folds"]):
+        raise RuntimeError(
+            f"Fold count mismatch: model has {len(model_folds)} folds but data has {len(np.unique(data['folds']))} folds"
+        )
+
+    result_arr = np.zeros((data["X"].shape[0], num_class), dtype=np.float64)
+    all_infer_check = np.zeros(data["X"].shape[0], dtype=bool)
+    for idx, name, run_dir in folds:
+        data_k = view_fold(data, idx)
+        arr = data_k["val_features"]
+        model = model_folds[idx]
+        pred = predict_log_proba(model, arr) if arr.shape[0] > 0 else np.empty((0, num_class))
+        pred = np.asarray(pred)
+
+        _, fold_idx = data["folds"][idx]
+        all_infer_check[fold_idx] = True
+        result_arr[fold_idx] = pred
+    if any(~all_infer_check):
+        raise RuntimeError(
+            f"Some events were not inferred. Check fold assignment and data loading."
+        )
+
+    # --- 쓰기 시작 ---
+    tf = None
     try:
-        model = TabNetClassifier()
-        model.load_model(input_model_path)
-        data_info = np.load(os.path.join(model_folder, "info.npy"), allow_pickle=True)
-        data_info = data_info[()]
-        data_info = data_info["data_info"]
-        varlist = data_info["varlist"]
-        add_year_index = data_info["add_year_index"]
-
-        input_tuple = ([(root_file, "Result_Tree", "")],[])
-        if "weight" in varlist:
-            varlist.remove("weight")
-        if add_year_index:
-            data = load_data(
-                tree_path_filter_str=input_tuple, varlist=varlist, test_ratio=0, val_ratio=0,useLabelEncoder=False,add_year_index=1
-            )        
-        else:
-            data = load_data(
-                tree_path_filter_str=input_tuple, varlist=varlist, test_ratio=0, val_ratio=0,useLabelEncoder=False
-            )
-        print("Data loaded")
-        arr = data["train_features"]
-
-        pred = predict_log_proba(model, arr)
-        num_class = pred.shape[1]
-        print("infer is done. start writing...")
-
         tf = ROOT.TFile.Open(root_file, "UPDATE")
+        if not tf or tf.IsZombie():
+            raise RuntimeError(f"Failed to open for UPDATE: {root_file}")
 
-        ##########################################################
-        ############## classical iterator
-        ##########################################################
         tree = tf.Get("Result_Tree")
-        bufs = []
-        branchs = []
+        if not tree:
+            raise RuntimeError(f"'Result_Tree' not found in {root_file}")
+
+        n_entries = tree.GetEntries()
+        if n_entries != result_arr.shape[0]:
+            raise RuntimeError(
+                f"Entry mismatch: tree entries={n_entries} vs pred rows={result_arr.shape[0]} in {root_file}"
+            )
+
+        # 브랜치 버퍼/생성
+        bufs = [array.array("f", [0.0]) for _ in range(num_class)]
+        branches = []
         for cls in range(num_class):
-            bufs.append(array.array("f", [0.0]))
-            branchs.append(tree.Branch(new_branch_name + f"_log_prob_{cls}", bufs[cls], new_branch_name + f"_log_prob_{cls}" + "/F"))
+            bname = f"{new_branch_name}_log_prob_{cls}"
+            branches.append(tree.Branch(bname, bufs[cls], f"{bname}/F"))
 
-        
-        for i in range(tree.GetEntries()):
+        # 채우기
+        for i in range(n_entries):
             for cls in range(num_class):
-                bufs[cls][0] = float(pred[i, cls])
-                branchs[cls].Fill()
+                bufs[cls][0] = float(result_arr[i, cls])
+                branches[cls].Fill()
+
+        # 쓰기
         tree.Write("", ROOT.TObject.kOverwrite)
-        tf.Close()
-    except Exception as e:
-        # Log the exception
-        return f"Error {str(e)} occurred while processing {root_file}"
-    return f"Successfully processed {root_file}"
+
+        # 성공 시 메시지(선택)
+        return f"OK: {root_file}"
+
+    finally:
+        if tf:
+            tf.Close()
 
 
-def safe_infer(file, input_model_path, new_branch_name, model_folder):
+def safe_infer(args):
+    f, input_model_path, new_branch_name, model_folder = args
+    logs = []
+
+    def log(msg):
+        logs.append(msg)
+
     try:
-        msg = infer_and_write(file, input_model_path, new_branch_name, model_folder)
-        # --- 결과 정규화 ---
-        ok = True
-        text = "" if msg is None else str(msg)
-
-        # ① 불리언/튜플 프로토콜 지원 (ex: (False, "reason"))
-        if isinstance(msg, bool):
-            ok = msg; text = ""
-        elif isinstance(msg, (tuple, list)) and msg and isinstance(msg[0], bool):
-            ok = bool(msg[0]); text = " ".join(map(str, msg[1:]))
-
-        # ② 문자열에 'error'가 있으면 실패로 간주 (대소문자 무시)
-        if isinstance(msg, str) and "error" in msg.lower():
-            ok = False
-
-        return ("ok" if ok else "err", file, text)
+        log(f"[{os.getpid()}] start {f}")
+        msg = infer_and_write(f, input_model_path, new_branch_name, model_folder)
+        log(f"[{os.getpid()}] done  {f}: {msg}")
+        return ("ok", f, logs)
     except Exception:
-        return ("err", file, traceback.format_exc())
+        import traceback
+
+        logs.append(traceback.format_exc())
+        return ("err", f, logs)
+
 
 def infer(input_root_file, input_model_path, branch_name="template_score"):
-    import array, shutil, time
+    import array, shutil, time, tempfile
+    from pathlib import Path
+    import multiprocessing as mp  # torch.multiprocessing가 꼭 필요 없으면 표준 mp가 덜 까다롭습니다.
 
     start_time = time.time()
-    # Absolute path to the input file
-    input_root_file = os.path.abspath(input_root_file)
+    input_root_file = str(Path(input_root_file).resolve())
     print(input_model_path)
 
-    model_folder = "/".join(input_model_path.split("/")[:-1])
-    # ROOT.EnableImplicitMT() ImplicitMT should not be used
-    #model = TabNetClassifier()
-    #model.load_model(input_model_path)
-    outname = input_root_file.split("/")
-    outname[-1] = outname[-1].replace(".root", "")
-    outname = "_".join(outname[-5:])
+    model_folder = str(Path(input_model_path).parent)
+    outname = "_".join(Path(input_root_file).with_suffix("").parts[-5:])
+
+    # spawn 설정은 여기서 중복 호출시 에러 -> 무시
+    try:
+        mp.set_start_method("spawn", force=False)
+    except RuntimeError:
+        pass
+
+    tmp_dir = Path(input_root_file).parent / "tmp"
+    tmp_dir.mkdir(exist_ok=True)  # 없으면 생성
+
+    tmp_root = Path(tempfile.mkdtemp(prefix=f"tmp_infer_{outname}_", dir=tmp_dir))
+    print(f"[tmp] working dir: {tmp_root}")
 
     try:
         new_branch_name = branch_name
-        import torch.multiprocessing as mp
-        #import multiprocessing as mp
-        # set to log all info 
-        #import logging
-        #mp.log_to_stderr(logging.DEBUG)
-        
-        mp.set_start_method("spawn")
+
         print(f"Start to process {input_root_file}")
         input_file = ROOT.TFile.Open(input_root_file, "READ")
+        if not input_file or input_file.IsZombie():
+            raise RuntimeError(f"Failed to open: {input_root_file}")
         print(f"Opened {input_root_file}")
+
         output_files = []
-        for ch in input_file.GetListOfKeys():
-            if isinstance(ch.ReadObj(), ROOT.TDirectory):
-                chdirname = input_root_file.replace(".root", f"/{ch.GetName()}")
-                print(f"Will create a new directory: {chdirname}")
-                os.makedirs(chdirname, exist_ok=True)
-                for key in ch.ReadObj().GetListOfKeys():
-                    obj = key.ReadObj()
-                    if isinstance(obj, ROOT.TDirectory):
-                        # Create an output file for each TDirectory
-                        output_file_name = chdirname + '/' + f"{obj.GetName()}.root"
-                        output_file = ROOT.TFile.Open(output_file_name, "RECREATE")
-                        output_files.append(output_file_name)
 
-                        # Enter the TDirectory and copy its contents to the new file
+        # 1) 상위 디렉터리 순회
+        for ch_key in input_file.GetListOfKeys():
+            ch_obj = ch_key.ReadObj()
+            if not ch_obj.InheritsFrom("TDirectory"):
+                continue
 
-                        input_file.cd(chdirname.split('/')[-1] + '/' + obj.GetName())
-                        for inner_key in ROOT.gDirectory.GetListOfKeys():
-                            inner_obj = inner_key.ReadObj()
+            chdirname = tmp_root / ch_obj.GetName()
+            print(f"Will create a new directory: {chdirname}")
+            chdirname.mkdir(parents=True, exist_ok=True)
 
-                            output_file.cd()
-                            prefix = str(new_branch_name)
+            # 2) 하위 디렉터리 순회
+            for key in ch_obj.GetListOfKeys():
+                obj = key.ReadObj()
+                if not obj.InheritsFrom("TDirectory"):
+                    continue
 
-                            # (선택) 실제로 어떤 브랜치가 대상인지 로그로 확인
-                            if inner_obj.InheritsFrom("TTree"):
-                                tree = inner_obj
-                                # 어떤 브랜치가 지워질지 미리 로깅
-                                branches = tree.GetListOfBranches()
-                                names = [branches.At(i).GetName() for i in range(branches.GetSize())]
-                                matches = [n for n in names if n.startswith(prefix)]
+                out_path = chdirname / f"{obj.GetName()}.root"
+                output_file = ROOT.TFile.Open(str(out_path), "RECREATE")
+                output_files.append(str(out_path))
 
-                                if matches:
-                                    print(f"[{ch.GetName()}/{obj.GetName()}] "
-                                        f"Tree '{tree.GetName()}': delete {len(matches)} branches with prefix '{prefix}': {matches}")
-                                    # 1) 모두 활성화
-                                    tree.SetBranchStatus("*", 1)
-                                    # 2) prefix* 비활성화
-                                    tree.SetBranchStatus(prefix + "*", 0)
-                                    # 3) 활성 브랜치만 복제
-                                    cloned = tree.CloneTree(-1, "fast")
-                                    cloned.SetName(tree.GetName())
-                                    cloned.Write("", ROOT.TObject.kOverwrite)
-                                    # 4) 상태 복구
-                                    tree.SetBranchStatus("*", 1)
-                                else:
-                                    # 지울 것 없으면 전체 복제해서 복사
-                                    cloned = tree.CloneTree(-1, "fast")
-                                    cloned.SetName(tree.GetName())
-                                    cloned.Write("", ROOT.TObject.kOverwrite)
+                # 입력 디렉토리로 cd
+                input_file.cd(f"{ch_obj.GetName()}/{obj.GetName()}")
 
-                            else:
-                                # --- 히스토그램/그래프/기타 객체는 그대로 복사 ---
-                                # 필요시 이름 유지해서 덮어쓰기
-                                inner_obj.Write(inner_obj.GetName(), ROOT.TObject.kOverwrite)
+                for inner_key in ROOT.gDirectory.GetListOfKeys():
+                    inner_obj = inner_key.ReadObj()
 
+                    output_file.cd()
+                    prefix = str(new_branch_name)
 
-                        output_file.Close()
+                    if inner_obj.InheritsFrom("TTree"):
+                        tree = inner_obj
+                        # 어떤 브랜치가 지워질지 미리 로깅
+                        branches = tree.GetListOfBranches()
+                        names = [
+                            branches.At(i).GetName() for i in range(branches.GetSize())
+                        ]
+                        matches = [n for n in names if n.startswith(prefix)]
 
-        ###now start multiprocess to perform a infer for each seprated files
-        
-        procs = []
-        errors = []
-        success = []
+                        # 예외가 나도 상태 원복되도록
+                        tree.SetBranchStatus("*", 1)
+                        try:
+                            if matches:
+                                print(
+                                    f"[{ch_obj.GetName()}/{obj.GetName()}]"
+                                    f" Tree '{tree.GetName()}': delete {len(matches)} branches with prefix '{prefix}': {matches}"
+                                )
+                                tree.SetBranchStatus(prefix + "*", 0)
+                            cloned = tree.CloneTree(-1, "fast")
+                            cloned.SetName(tree.GetName())
+                            cloned.Write("", ROOT.TObject.kOverwrite)
+                        finally:
+                            tree.SetBranchStatus("*", 1)
+                    else:
+                        inner_obj.Write(inner_obj.GetName(), ROOT.TObject.kOverwrite)
+
+                output_file.Close()
+
+        # 입력 파일은 더 이상 사용 안 하므로 즉시 닫기
+        input_file.Close()
+
+        # 3) 멀티프로세싱 추론
+        errors, success = [], []
+
+        args = [
+            (f, input_model_path, new_branch_name, model_folder) for f in output_files
+        ]
+
         with mp.Pool(processes=7) as pool:
-            # starmap_async가 인자 풀어주기 편함
-            async_res = pool.starmap_async(
-                safe_infer,
-                [(f, input_model_path, new_branch_name, model_folder) for f in output_files]
-            )
-            for status, f, payload in async_res.get():  # get()에서 워커 예외가 올라오지 않도록 safe_infer가 모두 흡수
+            for status, f, logs in pool.imap_unordered(safe_infer, args, chunksize=1):
+                for line in logs:
+                    print(line, flush=True)
                 if status == "ok":
-                    success.append((f, payload))
+                    success.append((f, "\n".join(logs)))
                 else:
-                    errors.append((f, payload))
+                    errors.append((f, "\n".join(logs)))
 
-        # 보고
         if errors:
             print("Errors encountered during processing:")
-            print("[ABORT] Keeping original ROOT file intact; not merging/replacing.")
             for f, tb in errors:
                 print(f"[{f}]")
-                print(tb)  # traceback 전체
-            # 필요하면 여기서 return
+                print(tb)
+            print("[ABORT] Keeping original ROOT file intact; not merging/replacing.")
+            return
+
         if success:
             print("Successfully processed:")
             for f, msg in success:
-                print(f"- {f} {('→ ' + msg) if msg else ''}")
-            
-
-        # for i, file in enumerate(output_files):
-        #     p = mp.Process(
-        #         target=infer_and_write,
-        #         args=(file, input_model_path, new_branch_name, model_folder),
-        #     )
-        #     p.start()
-        #     procs.append(p)
-
-        #for p in procs:
-        #    p.join()
-        # for i, file in enumerate(output_files):
-        #     infer_and_write(file, model, new_branch_name, model_folder)
-
-        ####start to merge into one file again
-        merged_file = ROOT.TFile.Open(
-            input_root_file.replace(".root", "_merged.root"), "RECREATE"
+                print(f"- {f} {('→ ' + msg) if msg else ''}")  # msg가 list
+        # 4) 병합
+        merged_path = str(
+            Path(input_root_file).with_name(Path(input_root_file).stem + "_merged.root")
         )
+        merged_file = ROOT.TFile.Open(merged_path, "RECREATE")
+        if not merged_file or merged_file.IsZombie():
+            raise RuntimeError(f"Failed to create merged file: {merged_path}")
 
-        for file in output_files:
-            chdir = file.split("/")[-2]
-            filedir = file.split("/")[-1].replace(".root", "")
-            file = ROOT.TFile.Open(file, "READ")
-            file.cd()
+        for f in output_files:
+            src = ROOT.TFile.Open(f, "READ")
+            if not src or src.IsZombie():
+                raise RuntimeError(f"Failed to open split file: {f}")
+            # chdir/dir명은 파일 경로로부터
+            chdir = Path(f).parent.name
+            filedir = Path(f).stem
+
+            src.cd()
             for inner_key in ROOT.gDirectory.GetListOfKeys():
                 inner_obj = inner_key.ReadObj()
                 merged_file.cd()
-                #check dir is exist
-                if not merged_file.GetDirectory(chdir + '/' + filedir):
-                    this_dir = merged_file.mkdir(chdir + '/' + filedir)
-                else:
-                    this_dir = merged_file.GetDirectory(chdir + '/' + filedir)
-                this_dir.cd()
-                if isinstance(inner_obj, ROOT.TTree):
-                    # Clone the tree and write it to the output file
+                # 중첩 디렉토리 확보
+                full_dir = f"{chdir}/{filedir}"
+                d = merged_file.GetDirectory(full_dir)
+                if not d:
+                    d = merged_file.mkdir(full_dir)
+                d.cd()
+                if inner_obj.InheritsFrom("TTree"):
                     inner_obj.SetBranchStatus("*", 1)
                     cloned_tree = inner_obj.CloneTree(-1, "fast")
                     cloned_tree.Write()
                 else:
-                    # For other objects (e.g., histograms), simply write them
                     inner_obj.Write()
-            file.Close()
-
-        # for file in output_files:
-        #     dirname = file.split("_")[-1].replace(".root", "")
-        #     this_dir = merged_file.mkdir(dirname)
-        #     file = ROOT.TFile.Open(file, "READ")
-
-        #     file.cd()
-        #     for inner_key in ROOT.gDirectory.GetListOfKeys():
-        #         inner_obj = inner_key.ReadObj()
-        #         this_dir.cd()
-        #         if isinstance(inner_obj, ROOT.TTree):
-        #             # Clone the tree and write it to the output file
-        #             inner_obj.SetBranchStatus("*", 1)
-        #             cloned_tree = inner_obj.CloneTree(-1, "fast")
-        #             cloned_tree.Write()
-        #         else:
-        #             # For other objects (e.g., histograms), simply write them
-        #             inner_obj.Write()
-        #     file.Close()
+            src.Close()
 
         merged_file.Close()
 
-        ##clean the residuals created during task
-        #for file in output_files:
-        #    os.remove(file)
-        #os.remove(input_root_file)
-        
-        shutil.move(input_root_file.replace(".root", "_merged.root"), input_root_file)
-        shutil.rmtree(input_root_file.replace(".root", ""))
+        # 5) 원본 교체 + 정리
+        shutil.move(merged_path, input_root_file)
+
         end_time = time.time()
-
-        # Calculate the elapsed time
-        elapsed_time = end_time - start_time
-
-        print(f"Elapsed Time: {elapsed_time} seconds")
+        print(f"Elapsed Time: {end_time - start_time:.2f} seconds")
 
     except Exception as e:
-        import fcntl
+        raise
 
-        print(e)
-        file_path = (
-            "/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_log/error_list"
-        )
-        with open(file_path, "a") as file:
-            fcntl.flock(file, fcntl.LOCK_EX)
-            file.write(outname + "\n")
-            fcntl.flock(file, fcntl.LOCK_UN)
 
 # patch_list는 네가 준 그대로라고 가정
 patch_list = {
@@ -950,6 +954,7 @@ for era, samples in patch_list.items():
 # 긴 이름(예: TTLL_powheg_CP5Down) 먼저 매칭되도록 정렬
 samples_by_len = sorted(allowed_by_sample.keys(), key=len, reverse=True)
 
+
 def infer_with_iter(input_folder, input_model_path, branch_name, result_folder_name):
     import htcondor, shutil, ROOT, pathlib
 
@@ -960,17 +965,15 @@ def infer_with_iter(input_folder, input_model_path, branch_name, result_folder_n
         "infer_log",
     )
 
-    #if os.path.isdir(log_path):
+    # if os.path.isdir(log_path):
     #    shutil.rmtree(log_path)
-    #os.makedirs(log_path)
-    eras = [era] if era != "All" else ["2016preVFP","2016postVFP", "2017", "2018"]
+    # os.makedirs(log_path)
+    eras = [era] if era != "All" else ["2016preVFP", "2016postVFP", "2017", "2018"]
     chs = ["Mu", "El"]
     for e in eras:
-        #for ch in chs:
+        # for ch in chs:
         print(os.path.join(input_folder, e, result_folder_name))
-        if not os.path.isdir(
-            os.path.join(input_folder, e, result_folder_name)
-        ):
+        if not os.path.isdir(os.path.join(input_folder, e, result_folder_name)):
             continue
         systs = os.listdir(os.path.join(input_folder, e, result_folder_name))
 
@@ -1003,8 +1006,6 @@ def infer_with_iter(input_folder, input_model_path, branch_name, result_folder_n
                 # ######clear residuals
                 # ##########
 
-                if (not "DATA" in file) and (not "bb" in file):
-                    continue
                 if "temp" in file or "update" in file:
                     os.remove(file)
                     continue
@@ -1031,9 +1032,7 @@ def infer_with_iter(input_folder, input_model_path, branch_name, result_folder_n
                         "log": os.path.join(log_path, f"{outname}.log"),
                         "request_memory": (
                             "220GB"
-                            if (
-                                "TTLJ_powheg" in outname or "TTLL_powheg" in outname
-                            )
+                            if ("TTLJ_powheg" in outname or "TTLL_powheg" in outname)
                             and "Central" in outname
                             else "32GB"
                         ),
@@ -1044,7 +1043,7 @@ def infer_with_iter(input_folder, input_model_path, branch_name, result_folder_n
                         ),
                         "request_cpus": 32,
                         "should_transfer_files": "YES",
-                        "on_exit_hold" : "(ExitBySignal == True) || (ExitCode != 0)"
+                        "on_exit_hold": "(ExitBySignal == True) || (ExitCode != 0)",
                     }
                 )
 
@@ -1092,7 +1091,7 @@ if __name__ == "__main__":
         dest="result_folder_name",
         type=str,
         help="name of RunResult folder",
-    ) 
+    )
     parser.add_argument(
         "--floss_gamma",
         dest="floss_gamma",
@@ -1125,7 +1124,7 @@ if __name__ == "__main__":
         dest="add_year_index",
         type=int,
         default=0,
-        help="add year index"
+        help="add year index",
     )
     parser.add_argument(
         "--checkpoint",
@@ -1141,16 +1140,23 @@ if __name__ == "__main__":
         default=0,
         help="k-fold cross validation fold index",
     )
+    parser.add_argument(
+        "--config",
+        dest="config",
+        type=str,
+        default=None,
+        help="Path to TrainingConfig.py. If omitted, imports the installed TrainingConfig module.",
+    )
 
     # Parse the arguments from the command line
     args = parser.parse_args()
     era = args.era
-   
-            
+
     # Handle the selected working mode
-    if args.add_year_index and (args.working_mode != "train" and args.working_mode != "train_submit"):
+    if args.add_year_index and (
+        args.working_mode != "train" and args.working_mode != "train_submit"
+    ):
         print("add_year_index is only available for train mode. It will be ignored.")
-    
 
     if args.working_mode == "train":
         print("Training Mode")
@@ -1162,7 +1168,8 @@ if __name__ == "__main__":
             pretrained_model=args.pretrained_model,
             checkpoint=args.checkpoint,
             add_year_index=args.add_year_index,
-            fold=args.fold
+            fold=args.fold,
+            TC=_load_training_config_module(args.config),
         )
 
     elif args.working_mode == "plot":
