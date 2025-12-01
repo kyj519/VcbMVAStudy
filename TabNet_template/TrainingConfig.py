@@ -23,7 +23,8 @@ class TabNetTrainConfig:
     lambda_sparse: float = 1e-4
     tabnet_gamma: float = 1.5
     mask_type: str = "entmax"
-
+    cat_emb_dim: int = 1
+    
     lr: float = 2e-3
     weight_decay: float = 5e-3
     betas: Tuple[float, float] = (0.9, 0.999)
@@ -42,6 +43,7 @@ class TabNetTrainConfig:
     num_workers: int = 32
     patience: int = 30
     compute_importance: bool = False
+    n_folds: int = 3
 
     # loss/metrics
     floss_gamma: float = 0.0
@@ -68,6 +70,11 @@ class TabNetTrainConfig:
         ("m_had_t", (0, 400)),
         ("m_had_w", (0, 300))
     ])
+
+    categorical_columns: Optional[List[str]] = None
+    categorical_dims: Optional[Dict[str, int]] = None
+    
+    assume_btag_mode: bool = True  
     
 
 
@@ -250,15 +257,22 @@ class TabNetTrainConfig:
             varlist = varlist + ["year_index"]
         log_columns = self.log_columns if self.log_columns else None
         winsorize_cols = self.winsorize_columns if self.winsorize_columns else None
+        categorial_columns = self.categorical_columns if self.categorical_columns else None
+        categorial_dims = self.categorical_dims if self.categorical_dims else None
 
         return dict(
             tree_path_filter_str=tuple(input_tuple),
             varlist=varlist,
             log_columns=log_columns,
             winsorize_columns=winsorize_cols,
+            categorical_columns=categorial_columns,
+            categorical_dims=categorial_dims,
             #test_ratio=test_ratio,
             #val_ratio=val_ratio,
             sample_bkg=sample_bkg,
+            n_splits=self.n_folds,
+            seed=42,
+            assume_btag_mode=self.assume_btag_mode,
         )
 
     # ---------- (2) 모델/로스/메트릭/트레이닝 인포 ----------
@@ -273,7 +287,7 @@ class TabNetTrainConfig:
             mask_type=self.mask_type, verbose=1,
             cat_idxs=list(data["cat_idxs"]),
             cat_dims=list(data["cat_dims"]),
-            cat_emb_dim=1,
+            cat_emb_dim=self.cat_emb_dim,
             device_name=str(device),
             optimizer_fn=torch.optim.AdamW,
             optimizer_params=dict(lr=self.lr, weight_decay=self.weight_decay, betas=self.betas),
@@ -441,31 +455,4 @@ class TabNetTrainConfig:
             cfg.save_config_source(model_save_path) 
 
             
-# ----------------------------
-# Convenience: fetch one fold's (train/val) arrays
-# ----------------------------
 
-@staticmethod
-def get_fold(dataset: Dict[str, np.ndarray], k: int = 0):
-    """Return (Xtr, ytr, wtr, Xval, yval, wval) for fold k."""
-    X, y, w = dataset["X"], dataset["y"], dataset["weight"]
-    folds: List[Tuple[np.ndarray, np.ndarray]] = dataset["folds"]
-    if not (0 <= k < len(folds)):
-        raise IndexError(f"k={k} out of range for {len(folds)} folds")
-    train_idx, val_idx = folds[k]
-    return X[train_idx], y[train_idx], w[train_idx], X[val_idx], y[val_idx], w[val_idx]
-
-@staticmethod
-def view_fold(dataset: Dict[str, Any], k: int) -> Dict[str, Any]:
-    Xtr, ytr, wtr, Xval, yval, wval = get_fold(dataset, k)
-    return dict(
-        train_features=Xtr,
-        train_y=ytr,
-        train_weight=wtr,
-        val_features=Xval,
-        val_y=yval,
-        val_weight=wval,
-        # 모델 빌드에 그대로 전달
-        cat_idxs=dataset["cat_idxs"],
-        cat_dims=dataset["cat_dims"],
-    )

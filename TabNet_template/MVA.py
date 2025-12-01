@@ -14,6 +14,8 @@ import shutil
 import sys
 import array
 import importlib.util
+import tempfile
+import time
 
 # Third-party
 import numpy as np
@@ -26,7 +28,6 @@ from torch.optim.lr_scheduler import (
     SequentialLR,
 )
 import torch.multiprocessing as mp
-from tqdm.auto import tqdm
 import TrainingConfig
 
 # Local
@@ -37,11 +38,12 @@ from helpers import (
     predict_logit_fast,
     explain_fast,
     predict_proba_fast,
-    predict_log_proba,
+    predict_log_proba_fast,
     _discover_folds,
     _pick_zip,
     _load_training_config_module,
-    view_fold
+    view_fold,
+    _iter_with_rich_progress,
 )
 from eval_functions import ClassBalancedFocalLoss, CBFocalLossMetric
 
@@ -52,7 +54,6 @@ from root_data_loader_awk import load_root_as_dataset_kfold as load_data_kfold
 from root_data_loader_awk import save_dataset_npz_json, load_dataset_npz_json
 
 mp.set_sharing_strategy("file_system")
-
 
 # 사용 예시
 device = pick_best_device(min_free_gb=6)  # 6GB 이상 비어있는 GPU 중 최적 선택
@@ -90,8 +91,6 @@ def train(
         fine_tune=fine_tune,
         pretrained_model=pretrained_model,
     )
-    # 기존 코드와 동일하게 patience = 2*T0
-    cfg.patience = 2 * cfg.T0
 
     # ----- data_info 생성 -----
     # era는 기존 전역 변수를 그대로 사용
@@ -383,7 +382,7 @@ def plot(model_save_path, checkpoint_path=None):
                 score=proba0,
                 y=y_inv,
                 plot_path=out_dir,
-                fname="ROC.png",
+                fname="ROC.pdf",
                 extra_text=label_str,
                 # weight=data.get("test_weight", None),
             )
@@ -391,9 +390,10 @@ def plot(model_save_path, checkpoint_path=None):
                 score=proba0,
                 y=y_inv,
                 plot_path=out_dir,
-                fname="ROC_log.png",
+                fname="ROC_log.pdf",
                 scale="log",
                 extra_text=label_str,
+                legend_loc="upper left",
                 # weight=data.get("test_weight", None),
             )
 
@@ -420,7 +420,7 @@ def plot(model_save_path, checkpoint_path=None):
                     score=local_score,
                     y=local_y,
                     plot_path=out_dir,
-                    fname=f"ROC_{sig_idx}_VS_{bkg_idx}.png",
+                    fname=f"ROC_{sig_idx}_VS_{bkg_idx}.pdf",
                     extra_text=label_str,
                     # weight=data.get("test_weight", None),
                 )
@@ -431,7 +431,7 @@ def plot(model_save_path, checkpoint_path=None):
                     score=local_score,
                     y=local_y,
                     plot_path=out_dir,
-                    fname=f"ROC_{sig_idx}_VS_{bkg_idx}_log.png",
+                    fname=f"ROC_{sig_idx}_VS_{bkg_idx}_log.pdf",
                     scale="log",
                     extra_text=label_str,
                     # weight=data.get("test_weight", None),
@@ -441,14 +441,14 @@ def plot(model_save_path, checkpoint_path=None):
                 score=scores_by_bkg,
                 y=yinv_by_bkg,
                 plot_path=out_dir,
-                fname=f"ROC_class_compare.png",
+                fname=f"ROC_class_compare.pdf",
                 labels=labels_by_bkg,
             )
             postTrainingToolkit.ROC_AUC(
                 score=scores_by_bkg,
                 y=yinv_by_bkg,
                 plot_path=out_dir,
-                fname=f"ROC_class_compare_log.png",
+                fname=f"ROC_class_compare_log.pdf",
                 labels=labels_by_bkg,
                 scale="log",
             )
@@ -614,7 +614,7 @@ def plot(model_save_path, checkpoint_path=None):
             y=yinv_per_fold,
             weight=None,
             plot_path=summary_dir,
-            fname="ROC_folds_linear.png",
+            fname="ROC_folds_linear.pdf",
             scale="linear",
             labels=labels,
         )
@@ -623,7 +623,7 @@ def plot(model_save_path, checkpoint_path=None):
             y=yinv_per_fold,
             weight=None,
             plot_path=summary_dir,
-            fname="ROC_folds_logx.png",
+            fname="ROC_folds_logx.pdf",
             scale="log",
             labels=labels,
         )
@@ -636,26 +636,16 @@ def plot(model_save_path, checkpoint_path=None):
         print(f"[per-fold] Saved overlay ROC plots to: {summary_dir}")
 
 
-def infer_and_write(root_file, input_model_path, new_branch_name, model_folder):
-    folds = _discover_folds(input_model_path)
+def infer_and_write(root_file, input_model_path, new_branch_name, model_folder, backend="pytorch"):
+
+    folds, model_folds, meta = _load_models_cached(input_model_path, backend=backend)
     if not folds:
         raise RuntimeError(f"No folds found under {input_model_path}.")
-    print(f"[fold-aware] Found {len(folds)} folds: {[name for _, name, _ in folds]}")
-    model_folds = {}
+    print(
+        f"[fold-aware] ({backend}) Found {len(folds)} folds: {[name for _, name, _ in folds]}"
+    )
 
-    for idx, name, run_dir in folds:
-        this_model = TabNetClassifier()
-        model_zip = _pick_zip(run_dir)
-        if model_zip is None:
-            raise FileNotFoundError(f"No model .zip file found in {run_dir}")
-        this_model.load_model(model_zip)
-        model_folds[idx] = this_model
-        print(f"  - Loaded fold {idx} from: {model_zip}")
-
-    first_run_dir = folds[0][2]
-    data_info = np.load(os.path.join(first_run_dir, "info.npy"), allow_pickle=True)
-    data_info = data_info[()]
-    data_info = data_info["data_info"]
+    data_info = meta["data_info"].copy()
     num_class = len(data_info["tree_path_filter_str"])
     data_info["tree_path_filter_str"] = [[(root_file, "Result_Tree", "")]]
     data_info["infer_mode"] = True
@@ -667,11 +657,12 @@ def infer_and_write(root_file, input_model_path, new_branch_name, model_folder):
 
     result_arr = np.zeros((data["X"].shape[0], num_class), dtype=np.float64)
     all_infer_check = np.zeros(data["X"].shape[0], dtype=bool)
+
     for idx, name, run_dir in folds:
         data_k = view_fold(data, idx)
         arr = data_k["val_features"]
-        model = model_folds[idx]
-        pred = predict_log_proba(model, arr) if arr.shape[0] > 0 else np.empty((0, num_class))
+        runner = model_folds[idx]
+        pred = runner.predict_log_proba(arr) if arr.shape[0] > 0 else np.empty((0, num_class))
         pred = np.asarray(pred)
 
         _, fold_idx = data["folds"][idx]
@@ -723,8 +714,43 @@ def infer_and_write(root_file, input_model_path, new_branch_name, model_folder):
             tf.Close()
 
 
+def _shutdown_pool(pool, label: str, timeout: float = 15.0):
+    """
+    Terminate a multiprocessing pool quickly so the main process can exit.
+    We avoid the blocking Pool.join() to prevent hangs seen after inference.
+    """
+    try:
+        pool.close()
+    except Exception:
+        pass
+
+    try:
+        pool.terminate()
+    except Exception:
+        pass
+
+    deadline = time.time() + timeout
+    for proc in getattr(pool, "_pool", []):
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            break
+        try:
+            proc.join(timeout=remaining)
+        except Exception:
+            pass
+
+    alive = [p for p in getattr(pool, "_pool", []) if p.is_alive()]
+    if alive:
+        print(f"[warn] forcing {len(alive)} stuck worker(s) to exit for {label}")
+        for proc in alive:
+            try:
+                proc.join(timeout=1.0)
+            except Exception:
+                pass
+
+
 def safe_infer(args):
-    f, input_model_path, new_branch_name, model_folder = args
+    f, input_model_path, new_branch_name, model_folder, backend = args
     logs = []
 
     def log(msg):
@@ -732,7 +758,9 @@ def safe_infer(args):
 
     try:
         log(f"[{os.getpid()}] start {f}")
-        msg = infer_and_write(f, input_model_path, new_branch_name, model_folder)
+        msg = infer_and_write(
+            f, input_model_path, new_branch_name, model_folder, backend=backend
+        )
         log(f"[{os.getpid()}] done  {f}: {msg}")
         return ("ok", f, logs)
     except Exception:
@@ -742,7 +770,7 @@ def safe_infer(args):
         return ("err", f, logs)
 
 
-def infer(input_root_file, input_model_path, branch_name="template_score"):
+def infer(input_root_file, input_model_path, branch_name="template_score", backend="pytorch"):
     import array, shutil, time, tempfile
     from pathlib import Path
     import multiprocessing as mp  # torch.multiprocessing가 꼭 필요 없으면 표준 mp가 덜 까다롭습니다.
@@ -753,6 +781,8 @@ def infer(input_root_file, input_model_path, branch_name="template_score"):
 
     model_folder = str(Path(input_model_path).parent)
     outname = "_".join(Path(input_root_file).with_suffix("").parts[-5:])
+    backend = _normalize_backend(backend)
+    print(f"[infer] backend={backend}")
 
     # spawn 설정은 여기서 중복 호출시 에러 -> 무시
     try:
@@ -841,10 +871,13 @@ def infer(input_root_file, input_model_path, branch_name="template_score"):
         errors, success = [], []
 
         args = [
-            (f, input_model_path, new_branch_name, model_folder) for f in output_files
+            (f, input_model_path, new_branch_name, model_folder, backend)
+            for f in output_files
         ]
 
-        with mp.Pool(processes=7) as pool:
+        ctx = mp.get_context("spawn")
+        pool = ctx.Pool(processes=1)
+        try:
             for status, f, logs in pool.imap_unordered(safe_infer, args, chunksize=1):
                 for line in logs:
                     print(line, flush=True)
@@ -852,6 +885,8 @@ def infer(input_root_file, input_model_path, branch_name="template_score"):
                     success.append((f, "\n".join(logs)))
                 else:
                     errors.append((f, "\n".join(logs)))
+        finally:
+            _shutdown_pool(pool, label="infer")
 
         if errors:
             print("Errors encountered during processing:")
@@ -910,6 +945,683 @@ def infer(input_root_file, input_model_path, branch_name="template_score"):
     except Exception as e:
         raise
 
+# parallel_score_friend.py
+import os, shutil, tempfile, array
+from pathlib import Path
+import numpy as np
+import multiprocessing as mp
+import ROOT
+
+ROOT.gROOT.SetBatch(True)
+ROOT.ROOT.EnableImplicitMT(0)
+
+# ==== 기존 유틸이 있다고 가정 ====
+# TabNetClassifier, _discover_folds, _pick_zip, load_data_kfold, view_fold, predict_log_proba_fast
+
+_MODEL_CACHE = {}
+
+_BACKEND_ALIASES = {
+    "torch": "pytorch",
+    "pt": "pytorch",
+    "pytorch": "pytorch",
+    "onnx": "onnx",
+    "onnx-int8": "onnx-int8",
+    "onnx_int8": "onnx-int8",
+    "trt": "tensorrt",
+    "trt-int8": "tensorrt-int8",
+    "trt_int8": "tensorrt-int8",
+    "tensorrt": "tensorrt",
+    "tensorrt-int8": "tensorrt-int8",
+    "tensorrt_int8": "tensorrt-int8",
+}
+
+
+def _normalize_backend(name: Optional[str]) -> str:
+    backend = "pytorch" if not name else _BACKEND_ALIASES.get(name.lower(), name.lower())
+    valid = {"pytorch", "onnx", "onnx-int8", "tensorrt", "tensorrt-int8"}
+    if backend not in valid:
+        raise ValueError(f"Unsupported backend '{name}'. Choose from {sorted(valid)}")
+    return backend
+
+
+def _prefer_int8(backend: str) -> bool:
+    return "int8" in backend
+
+
+def _dl_workers_for_infer() -> int:
+    env_v = os.getenv("TABNET_INFER_DL_WORKERS")
+    if env_v is not None:
+        try:
+            return max(0, int(env_v))
+        except Exception:
+            pass
+    try:
+        import multiprocessing as omp
+
+        if omp.current_process().daemon:
+            return 0  # daemonic process cannot spawn DataLoader workers
+    except Exception:
+        pass
+    return 0  # safe default
+
+
+def _log_softmax_np(logits: np.ndarray) -> np.ndarray:
+    logits = np.asarray(logits, dtype=np.float64)
+    if logits.size == 0:
+        # keep shape-compatible empty
+        if logits.ndim == 1:
+            return logits.reshape(0, 0)
+        return logits.reshape(logits.shape[0], logits.shape[1] if logits.ndim > 1 else 0)
+    maxv = np.max(logits, axis=1, keepdims=True)
+    stable = logits - maxv
+    sumexp = np.exp(stable).sum(axis=1, keepdims=True)
+    return stable - np.log(sumexp)
+
+
+def _batch_size_from_env(keys: tuple[str, ...], default: int) -> int:
+    for k in keys:
+        v = os.getenv(k)
+        if v is None:
+            continue
+        try:
+            return max(1, int(v))
+        except Exception:
+            pass
+    return default
+
+
+def _iter_batches(arr: np.ndarray, batch_size: int):
+    if batch_size is None or batch_size <= 0:
+        yield arr
+        return
+    n = arr.shape[0]
+    for start in range(0, n, batch_size):
+        yield arr[start : min(n, start + batch_size)]
+
+
+def _resolve_onnx_path(model_root: str, fold_idx: int, prefer_int8: bool = False) -> str:
+    root = Path(model_root)
+    onnx_dir = root / "onnx"
+    base = f"tabnet_fold{fold_idx}"
+    candidates = []
+    if prefer_int8:
+        candidates.extend(
+            [
+                onnx_dir / f"{base}.int8.onnx",
+                onnx_dir / f"{base}_int8.onnx",
+                root / f"{base}.int8.onnx",
+            ]
+        )
+    candidates.extend(
+        [
+            onnx_dir / f"{base}.onnx",
+            root / f"{base}.onnx",
+        ]
+    )
+    for cand in candidates:
+        if cand.exists():
+            return str(cand)
+    raise FileNotFoundError(
+        f"ONNX model for fold {fold_idx} not found. Looked for: {', '.join(map(str, candidates))}"
+    )
+
+
+def _resolve_trt_plan_path(model_root: str, fold_idx: int, prefer_int8: bool = False) -> Optional[str]:
+    root = Path(model_root)
+    trt_dir = root / "onnx"
+    base = f"tabnet_fold{fold_idx}"
+    candidates = []
+    if prefer_int8:
+        candidates.extend(
+            [
+                trt_dir / f"{base}.int8.plan",
+                trt_dir / f"{base}_int8.plan",
+            ]
+        )
+    candidates.extend([trt_dir / f"{base}.plan", root / f"{base}.plan"])
+    for cand in candidates:
+        if cand.exists():
+            return str(cand)
+    return None
+
+
+class _TorchFoldRunner:
+    def __init__(self, model: TabNetClassifier):
+        self.model = model
+
+    def predict_log_proba(self, arr: np.ndarray) -> np.ndarray:
+        return predict_log_proba_fast(
+            self.model, arr, num_workers=_dl_workers_for_infer()
+        )
+
+
+class _OnnxFoldRunner:
+    def __init__(self, onnx_path: str, prefer_trt_provider: bool = False, batch_size: Optional[int] = None):
+        try:
+            import onnxruntime as ort
+        except Exception as exc:
+            raise ImportError(
+                f"onnxruntime is required for ONNX/TensorRT backends: {exc}"
+            )
+
+        available = ort.get_available_providers()
+        provider_order = []
+        if prefer_trt_provider:
+            provider_order.append("TensorrtExecutionProvider")
+        provider_order.extend(["CUDAExecutionProvider", "CPUExecutionProvider"])
+        providers = [p for p in provider_order if p in available] or available
+
+        so = ort.SessionOptions()
+        if "TensorrtExecutionProvider" in providers:
+            cache_dir = Path(onnx_path).parent / "trt_cache"
+            try:
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                so.add_session_config_entry("trt_engine_cache_enable", "1")
+                so.add_session_config_entry("trt_engine_cache_path", str(cache_dir))
+            except Exception:
+                pass
+
+        self.session = ort.InferenceSession(
+            onnx_path, providers=providers, sess_options=so
+        )
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name
+        self.batch_size = batch_size or _batch_size_from_env(
+            ("ONNX_BATCH_INFER", "BATCH_INFER"), 4096
+        )
+        print(f"[onnx] Loaded {onnx_path} with providers={providers}")
+
+    def predict_log_proba(self, arr: np.ndarray) -> np.ndarray:
+        arr = np.asarray(arr, dtype=np.float32, order="C")
+        n = arr.shape[0]
+        if n == 0:
+            return np.empty((0, arr.shape[1] if arr.ndim > 1 else 0), dtype=np.float64)
+
+        outputs = []
+        for start in _iter_with_rich_progress(
+            range(0, n, self.batch_size), desc="Predict log proba (onnx)"
+        ):
+            end = min(n, start + self.batch_size)
+            chunk = arr[start:end]
+            logits = self.session.run(
+                [self.output_name], {self.input_name: chunk}
+            )[0]
+            outputs.append(_log_softmax_np(logits))
+
+        return np.concatenate(outputs, axis=0) if outputs else np.empty(
+            (0, arr.shape[1] if arr.ndim > 1 else 0), dtype=np.float64
+        )
+
+
+class _TrtPlanFoldRunner:
+    def __init__(self, plan_path: str, batch_size: Optional[int] = None):
+        try:
+            import tensorrt as trt  # type: ignore
+            import pycuda.driver as cuda  # type: ignore
+            import pycuda.autoinit  # type: ignore  # noqa: F401
+        except Exception as exc:
+            raise ImportError(f"TensorRT plan backend requires tensorrt + pycuda: {exc}")
+
+        self.cuda = cuda
+        self.logger = trt.Logger(trt.Logger.WARNING)
+        with open(plan_path, "rb") as f:
+            runtime = trt.Runtime(self.logger)
+            self.engine = runtime.deserialize_cuda_engine(f.read())
+        if self.engine is None:
+            raise RuntimeError(f"Failed to deserialize TensorRT engine at {plan_path}")
+        self.context = self.engine.create_execution_context()
+        self.stream = cuda.Stream()
+        self.batch_size = batch_size or _batch_size_from_env(
+            ("TRT_BATCH_INFER", "ONNX_BATCH_INFER", "BATCH_INFER"), 1024
+        )
+
+        self.trt = trt
+        self.cuda = cuda
+        self._use_binding_api = hasattr(self.engine, "num_bindings")
+        self.input_binding = None
+        self.output_binding = None
+        self.input_name = None
+        self.output_name = None
+        self.input_dtype = None
+        self.output_dtype = None
+        self._output_bindings: list[tuple[int, str]] = []
+        self._output_names_all: list[str] = []
+        self._output_dtypes: dict[str, np.dtype] = {}
+
+        def _pick_output_name(names: list[str]) -> str:
+            lower = [n.lower() for n in names]
+            for target in ("logit", "prob"):
+                for name, lname in zip(names, lower):
+                    if target in lname:
+                        return name
+            return names[0]
+
+        if self._use_binding_api:
+            for i in range(self.engine.num_bindings):
+                bname = self.engine.get_binding_name(i)
+                if self.engine.binding_is_input(i):
+                    self.input_binding = i
+                    self.input_name = bname
+                else:
+                    self._output_bindings.append((i, bname))
+            if self.input_binding is None:
+                raise RuntimeError("TensorRT plan must have at least one input.")
+            if not self._output_bindings:
+                raise RuntimeError("TensorRT plan must have at least one output.")
+            if len(self._output_bindings) == 1:
+                self.output_binding, self.output_name = self._output_bindings[0]
+            else:
+                chosen = _pick_output_name([n for _, n in self._output_bindings])
+                self.output_binding, self.output_name = next((i, n) for i, n in self._output_bindings if n == chosen)
+            self.input_dtype = np.dtype(trt.nptype(self.engine.get_binding_dtype(self.input_binding)))
+            self.output_dtype = np.dtype(trt.nptype(self.engine.get_binding_dtype(self.output_binding)))
+        else:
+            names = [self.engine.get_tensor_name(i) for i in range(self.engine.num_io_tensors)]
+            inputs = [n for n in names if self.engine.get_tensor_mode(n) == trt.TensorIOMode.INPUT]
+            outputs = [n for n in names if self.engine.get_tensor_mode(n) == trt.TensorIOMode.OUTPUT]
+            if len(inputs) != 1:
+                raise RuntimeError(f"TensorRT plan must have exactly one input tensor. inputs={inputs}")
+            if not outputs:
+                raise RuntimeError("TensorRT plan must have at least one output tensor.")
+            self.input_name = inputs[0]
+            self.output_name = _pick_output_name(outputs)
+            self._output_names_all = outputs
+            self._output_dtypes = {
+                name: np.dtype(trt.nptype(self.engine.get_tensor_dtype(name))) for name in outputs
+            }
+            self.input_dtype = np.dtype(trt.nptype(self.engine.get_tensor_dtype(self.input_name)))
+            self.output_dtype = np.dtype(trt.nptype(self.engine.get_tensor_dtype(self.output_name)))
+        self._num_classes = None
+        print(f"[trt] Loaded TensorRT plan from {plan_path}")
+
+    def predict_log_proba(self, arr: np.ndarray) -> np.ndarray:
+        cuda = self.cuda
+        trt = self.trt
+        arr = np.asarray(arr, dtype=self.input_dtype, order="C")
+        n = arr.shape[0]
+        if n == 0:
+            n_class = self._num_classes or (arr.shape[1] if arr.ndim > 1 else 0)
+            return np.empty((0, n_class), dtype=np.float64)
+
+        outputs = []
+        for start in _iter_with_rich_progress(
+            range(0, n, self.batch_size), desc="Predict log proba (trt)"
+        ):
+            end = min(n, start + self.batch_size)
+            chunk = arr[start:end]
+
+            if self._use_binding_api:
+                self.context.set_binding_shape(self.input_binding, tuple(chunk.shape))
+                out_host = None
+                bindings = [None] * self.engine.num_bindings
+                # input binding
+                d_in = cuda.mem_alloc(chunk.nbytes)
+                bindings[self.input_binding] = int(d_in)
+
+                # outputs: allocate per-output device buffer
+                d_out_primary = None
+                out_host = None
+                for ob_idx, ob_name in self._output_bindings:
+                    shape = tuple(
+                        (chunk.shape[0] if dim == -1 else dim)
+                        for dim in self.context.get_binding_shape(ob_idx)
+                    )
+                    dtype = np.dtype(trt.nptype(self.engine.get_binding_dtype(ob_idx)))
+                    d_buf = cuda.mem_alloc(int(np.prod(shape)) * dtype.itemsize)
+                    bindings[ob_idx] = int(d_buf)
+                    if ob_idx == self.output_binding:
+                        d_out_primary = d_buf
+                        out_host = np.empty(shape, dtype=self.output_dtype)
+                    else:
+                        # store to free later
+                        pass
+
+                cuda.memcpy_htod_async(d_in, chunk, self.stream)
+                self.context.execute_async_v2(bindings=bindings, stream_handle=self.stream.handle)
+                if d_out_primary is not None:
+                    cuda.memcpy_dtoh_async(out_host, d_out_primary, self.stream)
+                self.stream.synchronize()
+
+                # free allocations
+                d_in.free()
+                for ptr in bindings:
+                    if ptr is None or ptr == int(d_in):
+                        continue
+                    try:
+                        cuda.mem_free(ptr)
+                    except Exception:
+                        pass
+            else:
+                self.context.set_input_shape(self.input_name, tuple(chunk.shape))
+                out_shapes = {}
+                d_outputs = {}
+                out_host = None
+
+                for name in self._output_names_all:
+                    shape = tuple(
+                        (chunk.shape[0] if dim == -1 else dim)
+                        for dim in self.context.get_tensor_shape(name)
+                    )
+                    out_shapes[name] = shape
+                    dtype = self._output_dtypes.get(name, self.output_dtype)
+                    d_buf = cuda.mem_alloc(int(np.prod(shape)) * dtype.itemsize)
+                    d_outputs[name] = (d_buf, dtype)
+                    self.context.set_tensor_address(name, int(d_buf))
+
+                d_in = cuda.mem_alloc(chunk.nbytes)
+                self.context.set_tensor_address(self.input_name, int(d_in))
+
+                cuda.memcpy_htod_async(d_in, chunk, self.stream)
+                self.context.execute_async_v3(stream_handle=self.stream.handle)
+
+                if self.output_name in d_outputs:
+                    out_buf, _dtype = d_outputs[self.output_name]
+                    out_host = np.empty(out_shapes[self.output_name], dtype=self.output_dtype)
+                    cuda.memcpy_dtoh_async(out_host, out_buf, self.stream)
+                self.stream.synchronize()
+
+                d_in.free()
+                for buf, _dtype in d_outputs.values():
+                    try:
+                        buf.free()
+                    except Exception:
+                        pass
+
+            if self._num_classes is None and out_host.ndim > 1:
+                self._num_classes = out_host.shape[1]
+            outputs.append(_log_softmax_np(out_host))
+
+        if outputs:
+            return np.concatenate(outputs, axis=0)
+        # graceful empty result
+        n_class = self._num_classes or (arr.shape[1] if arr.ndim > 1 else 0)
+        return np.empty((0, n_class), dtype=np.float64)
+
+
+def _maybe_create_trt_plan_runner(plan_path: Optional[str]) -> Optional[_TrtPlanFoldRunner]:
+    if plan_path is None:
+        return None
+    try:
+        return _TrtPlanFoldRunner(plan_path)
+    except Exception as exc:
+        print(f"[trt] Failed to use plan {plan_path}: {exc}")
+        return None
+
+
+def _load_models_cached(input_model_path: str, backend: str = "pytorch"):
+    backend = _normalize_backend(backend)
+    cache_key = (backend, input_model_path)
+    if cache_key in _MODEL_CACHE:
+        return _MODEL_CACHE[cache_key]
+
+    folds = _discover_folds(input_model_path)
+    if not folds:
+        raise RuntimeError(f"No folds under {input_model_path}")
+
+    model_folds = {}
+    prefer_int8 = _prefer_int8(backend)
+    for idx, name, run_dir in folds:
+        if backend == "pytorch":
+            model = TabNetClassifier()
+            z = _pick_zip(run_dir)
+            if z is None:
+                raise FileNotFoundError(f"No model .zip in {run_dir}")
+            model.load_model(z)
+            model_folds[idx] = _TorchFoldRunner(model)
+        elif backend.startswith("onnx"):
+            onnx_path = _resolve_onnx_path(input_model_path, idx, prefer_int8=prefer_int8)
+            model_folds[idx] = _OnnxFoldRunner(onnx_path, prefer_trt_provider=False)
+        elif backend.startswith("tensorrt"):
+            runner = _maybe_create_trt_plan_runner(
+                _resolve_trt_plan_path(input_model_path, idx, prefer_int8=prefer_int8)
+            )
+            if runner is None:
+                onnx_path = _resolve_onnx_path(input_model_path, idx, prefer_int8=prefer_int8)
+                runner = _OnnxFoldRunner(onnx_path, prefer_trt_provider=True)
+            model_folds[idx] = runner
+        else:
+            raise ValueError(f"Unknown backend: {backend}")
+
+    meta = np.load(os.path.join(folds[0][2], "info.npy"), allow_pickle=True)[()]
+    _MODEL_CACHE[cache_key] = (folds, model_folds, meta)
+    return _MODEL_CACHE[cache_key]
+
+def _iter_subdirs_with_result_tree(in_root: str, tree_name="Result_Tree"):
+    f = ROOT.TFile.Open(in_root, "READ");  assert f and not f.IsZombie()
+    pairs = []
+    tree_name = tree_name.lstrip("/")
+    for k in f.GetListOfKeys():
+        obj = k.ReadObj()
+        if not obj.InheritsFrom("TDirectory"): continue
+        ch = obj.GetName()
+        for k2 in obj.GetListOfKeys():
+            obj2 = k2.ReadObj()
+            if not obj2.InheritsFrom("TDirectory"): continue
+            sub = obj2.GetName()
+            f.cd(f"{ch}/{sub}")
+            t = ROOT.gDirectory.Get(tree_name)
+            if t and t.InheritsFrom("TTree"):
+                pairs.append((ch, sub))
+    if not pairs:
+        tree = f.Get(tree_name)
+        if tree and tree.InheritsFrom("TTree"):
+            pairs.append(("", ""))
+    f.Close()
+    return pairs
+
+def _infer_logp(
+    shard_file: str,
+    input_model_path: str,
+    tree_name: str = "Result_Tree",
+    tree_path: Optional[str] = None,
+    backend: str = "pytorch",
+) -> np.ndarray:
+    folds, model_folds, meta = _load_models_cached(input_model_path, backend=backend)
+    data_info = meta["data_info"].copy()
+    K = len(data_info["tree_path_filter_str"])
+    data_info["infer_mode"] = True
+    # tree_path가 주어지면 그대로 사용하고, 없으면 tree_name만 사용
+    clean_tree_name = tree_name.lstrip("/")
+    use_tree_path = tree_path.lstrip("/") if tree_path else clean_tree_name
+    print(f"Loading data from: {shard_file} with tree path: {use_tree_path}")
+    data_info["tree_path_filter_str"] = [[(shard_file, use_tree_path, "")]]
+    data = load_data_kfold(**data_info)
+    N = data["X"].shape[0]
+    out = np.zeros((N, K), dtype=np.float64)
+    mask = np.zeros(N, dtype=bool)
+    for idx, name, _ in folds:
+        d = view_fold(data, idx)
+        arr = d["val_features"]
+        pred = (
+            model_folds[idx].predict_log_proba(arr) if arr.shape[0] > 0 else np.empty((0, K))
+        )
+        pred = np.asarray(pred)
+        _, fold_idx = data["folds"][idx]
+        mask[fold_idx] = True
+        out[fold_idx] = pred
+    if not mask.all():
+        raise RuntimeError("Incomplete inference coverage.")
+    return out  # (N,K)
+
+def _write_logp_tree(dest_file: str, chdir: str, subdir: str, logp: np.ndarray, tree_name="Result_Tree"):
+    # dest_file는 미리 RECREATE로 만들어져 있다고 가정
+    f = ROOT.TFile.Open(str(dest_file), "UPDATE");  assert f and not f.IsZombie()
+    current_dir = f  # root or subdir
+    if chdir:
+        current_dir = f.GetDirectory(chdir) or f.mkdir(chdir)
+    current_dir.cd()
+    if subdir:
+        current_dir = current_dir.GetDirectory(subdir) or current_dir.mkdir(subdir)
+    current_dir.cd()
+    t = ROOT.TTree(tree_name, "log_prob_* only")
+    N, K = logp.shape
+    bufs = [array.array("f", [0.0]) for _ in range(K)]
+    for k in range(K):
+        b = f"log_prob_{k}"
+        t.Branch(b, bufs[k], f"{b}/F")
+    for i in range(N):
+        row = logp[i]
+        for k in range(K):
+            bufs[k][0] = float(row[k])
+        t.Fill()
+    t.Write("", ROOT.TObject.kOverwrite)
+    f.Close()
+
+
+def _merge_parts_to_dest(dest_file: str, parts_dir: str, pairs, tree_name="Result_Tree"):
+    tree_name = tree_name.lstrip("/")
+    ROOT.TFile.Open(dest_file, "RECREATE").Close()
+    fout = ROOT.TFile.Open(dest_file, "UPDATE");  assert fout and not fout.IsZombie()
+    try:
+        for chdir, subdir in pairs:
+            p = Path(parts_dir) / f"{chdir}__{subdir}.root"
+            if not p.exists():
+                raise RuntimeError(f"Missing part: {p}")
+            src = ROOT.TFile.Open(str(p), "READ");  assert src and not src.IsZombie()
+            if chdir or subdir:
+                path = os.path.join(*[q for q in (chdir, subdir) if q])
+                src.cd(path)
+                t = ROOT.gDirectory.Get(tree_name)
+            else:
+                t = src.Get(tree_name)
+            assert t and t.InheritsFrom("TTree")
+            if chdir:
+                d1 = fout.GetDirectory(chdir) or fout.mkdir(chdir)
+            else:
+                d1 = fout
+            d1.cd()
+            if subdir:
+                d2 = d1.GetDirectory(subdir) or d1.mkdir(subdir)
+            else:
+                d2 = d1
+            d2.cd()
+            t.CloneTree(-1, "fast").Write(tree_name, ROOT.TObject.kOverwrite)
+            src.Close()
+            fout.cd()
+    finally:
+        fout.Close()
+
+
+def _worker_infer_part(args):
+    (
+        input_root_file,
+        input_model_path,
+        part_path,
+        chdir,
+        subdir,
+        tree_name,
+        backend,
+    ) = args
+    tree_path = "/".join([p for p in (chdir, subdir, tree_name) if p])
+    try:
+        os.environ.setdefault("OMP_NUM_THREADS", "1")
+        os.environ.setdefault("MKL_NUM_THREADS", "1")
+        logp = _infer_logp(
+            input_root_file,
+            input_model_path,
+            tree_name=tree_name,
+            tree_path=tree_path,
+            backend=backend,
+        )
+        ROOT.TFile.Open(part_path, "RECREATE").Close()
+        _write_logp_tree(part_path, chdir, subdir, logp, tree_name=tree_name)
+        return ("ok", tree_path, part_path)
+    except Exception:
+        import traceback
+
+        return ("err", tree_path, traceback.format_exc())
+
+
+def make_score_friend_file_parallel(input_root_file: str,
+                                    input_model_path: str,
+                                    out_group_name: str,
+                                    tree_name: str = "Result_Tree",
+                                    backend: str = "pytorch",
+                                    num_workers: int = 2,
+                                    cleanup_parts: bool = True) -> str:
+    """
+    원본 옆 out_group_name/ 폴더에 같은 파일명으로 score-only ROOT 생성.
+    내부 구조는 원본과 동일(chdir/subdir/Result_Tree) + 브랜치는 log_prob_*.
+    트리별로 병렬 추론 → part 파일 → 병합 순서로 동작.
+    """
+    backend = _normalize_backend(backend)
+    input_root_file = str(Path(input_root_file).resolve())
+    tree_name = tree_name.lstrip("/")
+    base_dir = Path(input_root_file).parent
+    src_name = Path(input_root_file).name
+
+    out_dir = base_dir / out_group_name
+    out_dir.mkdir(exist_ok=True)
+    parts_dir = out_dir / f".parts__{Path(src_name).stem}"
+    parts_dir.mkdir(parents=True, exist_ok=True)
+
+    pairs = _iter_subdirs_with_result_tree(input_root_file, tree_name=tree_name)
+    if not pairs:
+        alt_tree = (
+            "Result_Tree"
+            if tree_name != "Result_Tree"
+            else "Template_Training_Tree"
+        )
+        if alt_tree != tree_name:
+                alt_pairs = _iter_subdirs_with_result_tree(
+                    input_root_file, tree_name=alt_tree
+                )
+                if alt_pairs:
+                    tree_name = alt_tree
+                    pairs = alt_pairs
+    if not pairs:
+        raise RuntimeError(f"No subdirs with {tree_name} found.")
+
+    # 결과 파일 생성 준비
+    dest_file = str(out_dir / src_name)
+
+    tasks = [
+        (
+            input_root_file,
+            input_model_path,
+            str(parts_dir / f"{ch}__{sub}.root"),
+            ch,
+            sub,
+            tree_name,
+            backend,
+        )
+        for ch, sub in pairs
+    ]
+
+    errs, oks = [], []
+    worker_count = max(1, num_workers)
+    if worker_count == 1:
+        for t in tasks:
+            status, tag, payload = _worker_infer_part(t)
+            if status == "ok":
+                print(f"[OK ] {tag}  → {payload}")
+                oks.append(payload)
+            else:
+                print(f"[ERR] {tag}\n{payload}")
+                errs.append(tag)
+    else:
+        ctx = mp.get_context("spawn")
+        pool = ctx.Pool(processes=worker_count)
+        try:
+            for status, tag, payload in pool.imap_unordered(_worker_infer_part, tasks, chunksize=1):
+                if status == "ok":
+                    print(f"[OK ] {tag}  → {payload}")
+                    oks.append(payload)
+                else:
+                    print(f"[ERR] {tag}\n{payload}")
+                    errs.append(tag)
+        finally:
+            _shutdown_pool(pool, label="score-friend")
+
+    if errs:
+        raise RuntimeError(f"Part failures: {errs}")
+
+    _merge_parts_to_dest(dest_file, str(parts_dir), pairs, tree_name=tree_name)
+
+    if cleanup_parts:
+        shutil.rmtree(parts_dir, ignore_errors=True)
+
+    return dest_file
 
 # patch_list는 네가 준 그대로라고 가정
 patch_list = {
@@ -955,9 +1667,10 @@ for era, samples in patch_list.items():
 samples_by_len = sorted(allowed_by_sample.keys(), key=len, reverse=True)
 
 
-def infer_with_iter(input_folder, input_model_path, branch_name, result_folder_name):
+def infer_with_iter(input_folder, input_model_path, branch_name, result_folder_name, backend="pytorch"):
     import htcondor, shutil, ROOT, pathlib
 
+    backend = _normalize_backend(backend)
     log_path = os.path.join(
         os.environ["DIR_PATH"],
         "TabNet_template",
@@ -965,92 +1678,117 @@ def infer_with_iter(input_folder, input_model_path, branch_name, result_folder_n
         "infer_log",
     )
 
-    # if os.path.isdir(log_path):
-    #    shutil.rmtree(log_path)
-    # os.makedirs(log_path)
     eras = [era] if era != "All" else ["2016preVFP", "2016postVFP", "2017", "2018"]
-    chs = ["Mu", "El"]
-    for e in eras:
-        # for ch in chs:
-        print(os.path.join(input_folder, e, result_folder_name))
-        if not os.path.isdir(os.path.join(input_folder, e, result_folder_name)):
-            continue
-        systs = os.listdir(os.path.join(input_folder, e, result_folder_name))
 
-        # to select directory only
-        systs = [f for f in systs if not "." in f]
-        # systs=['Central_Syst']
+    def _collect_legacy_entries(e):
+        base = os.path.join(input_folder, e, result_folder_name)
+        if not os.path.isdir(base):
+            return []
+        systs = [
+            f
+            for f in os.listdir(base)
+            if os.path.isdir(os.path.join(base, f)) and "." not in f
+        ]
+        entries = []
         for syst in systs:
-            print(syst)
+            syst_dir = os.path.join(base, syst)
             files = [
-                os.path.join(
-                    input_folder,
-                    e,
-                    result_folder_name,
-                    syst,
-                    f,
-                )
-                for f in os.listdir(
-                    os.path.join(
-                        input_folder,
-                        e,
-                        result_folder_name,
-                        syst,
-                    )
-                )
+                os.path.join(syst_dir, f)
+                for f in os.listdir(syst_dir)
+                if f.endswith(".root")
             ]
-            for file in files:
-                if not file.endswith(".root"):
-                    continue
-                # ##########
-                # ######clear residuals
-                # ##########
+            if files:
+                entries.extend([(file, syst) for file in files])
+        return entries
 
-                if "temp" in file or "update" in file:
-                    os.remove(file)
-                    continue
-                # matched = next((s for s in samples_by_len if s in file), None)
-                # if matched is None:
-                #     # patch_list 어떤 샘플명도 포함 안 함 -> 스킵
-                #     continue
-                # if e not in allowed_by_sample[matched]:
-                #     continue
+    def _collect_2024_entries():
+        channel_names = ["Mu_TemplateTraining", "El_TemplateTraining"]
+        candidate_dirs = []
+        if result_folder_name:
+            candidate = os.path.join(input_folder, result_folder_name)
+            if os.path.isdir(candidate):
+                candidate_dirs.append(candidate)
+        if os.path.isdir(input_folder):
+            candidate_dirs.append(input_folder)
+        seen = set()
+        for candidate in candidate_dirs:
+            norm_candidate = os.path.normpath(candidate)
+            if norm_candidate in seen:
+                continue
+            seen.add(norm_candidate)
+            base_name = os.path.basename(norm_candidate)
+            if base_name in channel_names:
+                era_dir = os.path.join(norm_candidate, "2024")
+                if os.path.isdir(era_dir):
+                    yield from _iter_root_files(era_dir, base_name)
+            else:
+                for channel_name in channel_names:
+                    era_dir = os.path.join(norm_candidate, channel_name, "2024")
+                    if os.path.isdir(era_dir):
+                        yield from _iter_root_files(era_dir, channel_name)
 
-                print(file)
-                outname = file.split("/")
-                outname[-1] = outname[-1].replace(".root", "")
-                outname = "_".join(outname[-5:])
-                job = htcondor.Submit(
-                    {
-                        "universe": "vanilla",
-                        "getenv": True,
-                        "jobbatchname": f"Vcb_infer_{e}_{syst}_{outname}",
-                        "executable": "/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_write.sh",
-                        "arguments": f"{input_model_path} {file} {branch_name} {e}",
-                        "output": os.path.join(log_path, f"{outname}.out"),
-                        "error": os.path.join(log_path, f"{outname}.err"),
-                        "log": os.path.join(log_path, f"{outname}.log"),
-                        "request_memory": (
-                            "220GB"
-                            if ("TTLJ_powheg" in outname or "TTLL_powheg" in outname)
-                            and "Central" in outname
-                            else "32GB"
-                        ),
-                        "request_gpus": (
-                            0
-                            if ("TTLJ_powheg" in outname and "Central" in outname)
-                            else 0
-                        ),
-                        "request_cpus": 32,
-                        "should_transfer_files": "YES",
-                        "on_exit_hold": "(ExitBySignal == True) || (ExitCode != 0)",
-                    }
-                )
+    def _iter_root_files(directory, label):
+        for entry in sorted(os.listdir(directory)):
+            if not entry.endswith(".root"):
+                continue
+            yield (os.path.join(directory, entry), label)
+    Arg_list_file = "infer_arg_list.txt"
+    #make empty log file
+    os.makedirs(log_path, exist_ok=True)
+    with open(os.path.join(log_path, Arg_list_file), "w") as f:
+        f.write("")
+    for e in eras:
+        print(e)
+        entries = []
+        if e == "2024":
+            entries.extend(list(_collect_2024_entries()))
+        entries.extend(_collect_legacy_entries(e))
+        if not entries:
+            continue
 
-                schedd = htcondor.Schedd()
-                with schedd.transaction() as txn:
-                    cluster_id = job.queue(txn)
-                print("Job submitted with cluster ID:", cluster_id)
+
+        for file, syst in entries:
+            if "temp" in file or "update" in file:
+                os.remove(file)
+                continue
+
+            print(file)
+            outname = file.split("/")
+            outname[-1] = outname[-1].replace(".root", "")
+            outname = "_".join(outname[-5:])
+            with open(os.path.join(log_path, Arg_list_file), "a") as f:
+                f.write(f"{input_model_path} {file} {branch_name} {e} {backend}\n")
+            job = htcondor.Submit(
+                {
+                    "universe": "vanilla",
+                    "getenv": True,
+                    "jobbatchname": f"Vcb_infer_{e}_{syst}_{outname}",
+                    "executable": "/data6/Users/yeonjoon/VcbMVAStudy/TabNet_template/infer_write.sh",
+                    "arguments": f"{input_model_path} {file} {branch_name} {e} {backend}",
+                    "output": os.path.join(log_path, f"{outname}.out"),
+                    "error": os.path.join(log_path, f"{outname}.err"),
+                    "log": os.path.join(log_path, f"{outname}.log"),
+                    "request_memory": (
+                        "220GB"
+                        if ("TTLJ_powheg" in outname or "TTLL_powheg" in outname)
+                        and "Central" in outname
+                        else "32GB"
+                    ),
+                    "request_gpus": (
+                        0
+                        if ("TTLJ_powheg" in outname and "Central" in outname)
+                        else 0
+                    ),
+                    "request_cpus": 32,
+                    "should_transfer_files": "YES",
+                    "on_exit_hold": "(ExitBySignal == True) || (ExitCode != 0)",
+                }
+            )
+
+            schedd = htcondor.Schedd()
+            with schedd.transaction() as txn:
+                cluster_id = job.queue(txn)
+            print("Job submitted with cluster ID:", cluster_id)
 
 
 if __name__ == "__main__":
@@ -1085,6 +1823,13 @@ if __name__ == "__main__":
         type=str,
         help="inferring branch name",
         default="template_score",
+    )
+    parser.add_argument(
+        "--backend",
+        dest="backend",
+        type=str,
+        default="tensorrt",
+        help="inference backend: pytorch, onnx, onnx-int8, tensorrt, tensorrt-int8",
     )
     parser.add_argument(
         "--result_folder_name",
@@ -1183,6 +1928,7 @@ if __name__ == "__main__":
             input_folder=args.sample_folder_loc,
             input_model_path=args.input_model,
             result_folder_name=args.result_folder_name,
+            backend=args.backend,
         )
         # infer(args.input_root_file,args.input_model)
         # Add code for mode 3 here
@@ -1194,6 +1940,13 @@ if __name__ == "__main__":
         torch.set_num_interop_threads(1)
         ROOT.DisableImplicitMT()
         print("infering and writing")
-        infer(args.input_root_file, args.input_model, args.branch_name)
+        make_score_friend_file_parallel(
+            input_root_file=args.input_root_file,
+            input_model_path=args.input_model,
+            out_group_name=args.branch_name,
+            tree_name="Template_Training_Tree" if args.era == "2024" else "Result_Tree",
+            backend=args.backend,
+        )
+        #infer(args.input_root_file, args.input_model, args.branch_name)
     else:
         print("Wrong working mode")
