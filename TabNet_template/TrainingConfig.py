@@ -75,6 +75,11 @@ class TabNetTrainConfig:
     categorical_dims: Optional[Dict[str, int]] = None
     
     assume_btag_mode: bool = True  
+
+    # optional weight overrides (applied in data loader)
+    weight_fields: Optional[List[str]] = None
+    weight_fields_bt: Optional[List[str]] = None
+    weight_fields_ct: Optional[List[str]] = None
     
 
 
@@ -273,6 +278,9 @@ class TabNetTrainConfig:
             n_splits=self.n_folds,
             seed=42,
             assume_btag_mode=self.assume_btag_mode,
+            weight_fields=self.weight_fields,
+            weight_fields_bt=self.weight_fields_bt,
+            weight_fields_ct=self.weight_fields_ct,
         )
 
     # ---------- (2) 모델/로스/메트릭/트레이닝 인포 ----------
@@ -455,4 +463,3 @@ class TabNetTrainConfig:
             cfg.save_config_source(model_save_path) 
 
             
-

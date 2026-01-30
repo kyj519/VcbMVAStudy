@@ -22,4 +22,5 @@ lib/*.tar.gz
 *.err
 model_*
 **/old_models
-
+**/Weight_Optimization
+*.tsv
