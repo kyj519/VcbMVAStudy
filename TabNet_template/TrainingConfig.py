@@ -11,8 +11,98 @@ from typing import Optional, Tuple, List, Dict, Any
 
 from eval_functions import ClassBalancedFocalLoss, make_maxsig_metric_cls, make_cb_focal_metric_cls
 
-from helpers import pick_best_device, compute_class_counts, SaveEachEpochCallback
-from pytorch_tabnet.tab_model import TabNetClassifier
+from helpers import (
+    TensorBoardCallback,
+    SaveEachEpochCallback,
+    compute_class_counts,
+    pick_best_device,
+)
+from tabnet_compat import load_tabnet_model
+from tabnet_instrumented import InstrumentedTabNetClassifier
+from input_preprocessing import normalize_preprocess_mode
+
+
+def _build_linear_warmup(
+    optimizer: torch.optim.Optimizer, *, warmup_epochs: int, verbose: bool = False
+):
+    return torch.optim.lr_scheduler.LambdaLR(
+        optimizer,
+        lr_lambda=lambda epoch: min(
+            (epoch + 1) / float(max(int(warmup_epochs), 1)), 1.0
+        ),
+        verbose=verbose,
+    )
+
+
+class WarmupCosineRestartsScheduler:
+    def __new__(
+        cls,
+        optimizer: torch.optim.Optimizer,
+        *,
+        warmup_epochs: int = 0,
+        T_0: int = 10,
+        T_mult: int = 2,
+        eta_min: float = 1e-5,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ):
+        warmup_epochs = max(int(warmup_epochs), 0)
+        cosine = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=max(int(T_0), 1),
+            T_mult=T_mult,
+            eta_min=eta_min,
+            last_epoch=last_epoch if warmup_epochs == 0 else -1,
+            verbose=verbose,
+        )
+        if warmup_epochs == 0:
+            return cosine
+
+        warmup = _build_linear_warmup(
+            optimizer, warmup_epochs=warmup_epochs, verbose=verbose
+        )
+        return torch.optim.lr_scheduler.SequentialLR(
+            optimizer,
+            schedulers=[warmup, cosine],
+            milestones=[warmup_epochs],
+            last_epoch=last_epoch,
+            verbose=verbose,
+        )
+
+
+class WarmupCosineScheduler:
+    def __new__(
+        cls,
+        optimizer: torch.optim.Optimizer,
+        *,
+        warmup_epochs: int = 5,
+        T_max: int = 30,
+        eta_min: float = 1e-6,
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ):
+        warmup_epochs = max(int(warmup_epochs), 0)
+        cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=max(int(T_max), 1),
+            eta_min=eta_min,
+            last_epoch=last_epoch if warmup_epochs == 0 else -1,
+            verbose=verbose,
+        )
+        if warmup_epochs == 0:
+            return cosine
+
+        warmup = _build_linear_warmup(
+            optimizer, warmup_epochs=warmup_epochs, verbose=verbose
+        )
+        return torch.optim.lr_scheduler.SequentialLR(
+            optimizer,
+            schedulers=[warmup, cosine],
+            milestones=[warmup_epochs],
+            last_epoch=last_epoch,
+            verbose=verbose,
+        )
+
 
 @dataclass
 class TabNetTrainConfig:
@@ -33,17 +123,38 @@ class TabNetTrainConfig:
     T0: int = 10
     eta_min: float = 1e-5
     warm_restart_mult: int = 2
+    warmup_epochs: int = 0
     fine_tune: bool = False
+    fine_tune_warmup_epochs: int = 5
     fine_tune_Tmax: int = 30
     fine_tune_eta_min: float = 1e-6
 
     # training
     batch_size: int = 8192 * 8
     num_virtual_minibatches: int = 32
-    num_workers: int = 32
+    num_workers: int = 4
     patience: int = 30
     compute_importance: bool = False
     n_folds: int = 3
+    sample_bkg: Optional[float] = None
+    epoch_train_event_count: Optional[int] = 1638400 
+    epoch_sampling_mode: str = "uniform"
+    epoch_sampling_seed: int = 42
+    report_train_eval: bool = True
+    train_eval_max_samples: Optional[int] = 500000
+    train_eval_seed: int = 42
+    val_eval_max_samples: Optional[int] = 500000
+    val_eval_seed: int = 42
+    enable_tensorboard: bool = True
+    tensorboard_subdir: str = "tensorboard"
+    tensorboard_batch_freq: int = 10
+    tensorboard_histogram_freq: int = 100
+    tensorboard_histogram_max_samples: int = 200000
+    tensorboard_batch_ema_alpha: float = 0.98
+    tensorboard_log_text: bool = True
+    tensorboard_log_distributions: bool = False
+    tensorboard_log_params: bool = True
+    tensorboard_log_grads: bool = False
 
     # loss/metrics
     floss_gamma: float = 0.0
@@ -70,6 +181,12 @@ class TabNetTrainConfig:
         ("m_had_t", (0, 400)),
         ("m_had_w", (0, 300))
     ])
+    preprocess_mode: Optional[str] = "log1p"
+    norm_columns: List[str] = field(default_factory=list)
+    log_norm_columns: List[str] = field(default_factory=list)
+    winsorize_log_columns: List[Tuple[str, Tuple[float, float]]] = field(default_factory=list)
+    winsorize_norm_columns: List[Tuple[str, Tuple[float, float]]] = field(default_factory=list)
+    winsorize_log_norm_columns: List[Tuple[str, Tuple[float, float]]] = field(default_factory=list)
 
     categorical_columns: Optional[List[str]] = None
     categorical_dims: Optional[Dict[str, int]] = None
@@ -260,16 +377,36 @@ class TabNetTrainConfig:
         varlist = self.varlist
         if add_year_index != 0:
             varlist = varlist + ["year_index"]
-        log_columns = self.log_columns if self.log_columns else None
-        winsorize_cols = self.winsorize_columns if self.winsorize_columns else None
+        preprocess_mode = normalize_preprocess_mode(self.preprocess_mode)
+        preprocess_log_columns = self.log_columns if self.log_columns else None
+        preprocess_norm_columns = self.norm_columns if self.norm_columns else None
+        preprocess_log_norm_columns = self.log_norm_columns if self.log_norm_columns else None
+        preprocess_winsorize_columns = self.winsorize_columns if self.winsorize_columns else None
+        preprocess_winsorize_log_columns = (
+            self.winsorize_log_columns if self.winsorize_log_columns else None
+        )
+        preprocess_winsorize_norm_columns = (
+            self.winsorize_norm_columns if self.winsorize_norm_columns else None
+        )
+        preprocess_winsorize_log_norm_columns = (
+            self.winsorize_log_norm_columns if self.winsorize_log_norm_columns else None
+        )
         categorial_columns = self.categorical_columns if self.categorical_columns else None
         categorial_dims = self.categorical_dims if self.categorical_dims else None
 
         return dict(
             tree_path_filter_str=tuple(input_tuple),
             varlist=varlist,
-            log_columns=log_columns,
-            winsorize_columns=winsorize_cols,
+            log_columns=None,
+            winsorize_columns=None,
+            preprocess_mode=preprocess_mode,
+            preprocess_log_columns=preprocess_log_columns,
+            preprocess_norm_columns=preprocess_norm_columns,
+            preprocess_log_norm_columns=preprocess_log_norm_columns,
+            preprocess_winsorize_columns=preprocess_winsorize_columns,
+            preprocess_winsorize_log_columns=preprocess_winsorize_log_columns,
+            preprocess_winsorize_norm_columns=preprocess_winsorize_norm_columns,
+            preprocess_winsorize_log_norm_columns=preprocess_winsorize_log_norm_columns,
             categorical_columns=categorial_columns,
             categorical_dims=categorial_dims,
             #test_ratio=test_ratio,
@@ -286,7 +423,14 @@ class TabNetTrainConfig:
     # ---------- (2) 모델/로스/메트릭/트레이닝 인포 ----------
     def build_model(self, data: Dict[str, Any],
                     device: Optional[torch.device] = None,
-                    checkpoint: Optional[str] = None) -> Tuple[TabNetClassifier, Dict[str, Any]]:
+                    checkpoint: Optional[str] = None) -> Tuple[InstrumentedTabNetClassifier, Dict[str, Any]]:
+        if self.sample_bkg is not None and float(self.sample_bkg) < 0.0:
+            raise ValueError(f"sample_bkg must be >= 0 or None, got {self.sample_bkg}")
+        if self.epoch_sampling_mode not in {"class_balanced", "uniform"}:
+            raise ValueError(
+                "epoch_sampling_mode must be 'class_balanced' or 'uniform', "
+                f"got {self.epoch_sampling_mode!r}"
+            )
         device = device or pick_best_device(6.0)
 
         model_info = dict(
@@ -303,46 +447,35 @@ class TabNetTrainConfig:
 
         if not self.fine_tune:
             model_info.update(
-                scheduler_fn=torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
-                scheduler_params=dict(T_0=self.T0, T_mult=self.warm_restart_mult,
-                                      eta_min=self.eta_min, last_epoch=-1, verbose=False)
+                scheduler_fn=WarmupCosineRestartsScheduler,
+                scheduler_params=dict(
+                    warmup_epochs=self.warmup_epochs,
+                    T_0=self.T0,
+                    T_mult=self.warm_restart_mult,
+                    eta_min=self.eta_min,
+                    last_epoch=-1,
+                    verbose=False,
+                ),
             )
         else:
-            def build_warmup_cosine(optimizer, *,
-                        warmup_epochs: int = 5,
-                        T_max: int = 30,
-                        eta_min: float = 1e-6,
-                        last_epoch: int = -1,
-                        verbose: bool = False):
-                # 1) 선형 워밍업: epoch 0..warmup_epochs-1 에서 0→1로 증가
-                warmup = torch.optim.lr_scheduler.LambdaLR(
-                    optimizer,
-                    lr_lambda=lambda e: min((e + 1) / float(warmup_epochs), 1.0),
-                    verbose=verbose
-                )
-                # 2) 코사인 어닐링
-                cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
-                    optimizer, T_max=T_max, eta_min=eta_min, verbose=verbose
-                )
-                # 3) 시퀀셜로 연결
-                sched = torch.optim.lr_scheduler.SequentialLR(
-                    optimizer,
-                    schedulers=[warmup, cosine],
-                    milestones=[warmup_epochs],
-                    last_epoch=last_epoch,
-                    verbose=verbose
-                )
-                return sched
             model_info.update(
-                scheduler_fn=build_warmup_cosine,
-                scheduler_params=dict(warmup_epochs=5, T_max=self.fine_tune_Tmax,
-                                      eta_min=self.fine_tune_eta_min,
-                                      last_epoch=-1, verbose=False)
+                scheduler_fn=WarmupCosineScheduler,
+                scheduler_params=dict(
+                    warmup_epochs=self.fine_tune_warmup_epochs,
+                    T_max=self.fine_tune_Tmax,
+                    eta_min=self.fine_tune_eta_min,
+                    last_epoch=-1,
+                    verbose=False,
+                ),
             )
 
-        clf = TabNetClassifier(**model_info) if self.pretrained_model is None else TabNetClassifier()
+        clf = (
+            InstrumentedTabNetClassifier(**model_info)
+            if self.pretrained_model is None
+            else InstrumentedTabNetClassifier()
+        )
         if self.pretrained_model is not None:
-            clf.load_model(self.pretrained_model)
+            load_tabnet_model(clf, self.pretrained_model)
             clf.optimizer_fn = model_info["optimizer_fn"]
             clf.optimizer_params = model_info["optimizer_params"]
             clf.scheduler_fn = model_info["scheduler_fn"]
@@ -350,11 +483,18 @@ class TabNetTrainConfig:
 
         if checkpoint is not None and self.pretrained_model is None:
             print(f"Loading checkpoint: {checkpoint}")
-            clf.load_model(checkpoint)
+            load_tabnet_model(clf, checkpoint)
 
         # 디바이스 확실히 밀착
         clf.device_name = str(device)
         clf.device = torch.device(clf.device_name)
+        clf.epoch_train_event_count = (
+            None
+            if self.epoch_train_event_count is None
+            else max(int(self.epoch_train_event_count), 1)
+        )
+        clf.epoch_sampling_mode = str(self.epoch_sampling_mode)
+        clf.epoch_sampling_seed = int(self.epoch_sampling_seed)
 
         return clf, model_info
 
@@ -383,19 +523,187 @@ class TabNetTrainConfig:
         if self.use_asimov_metric:
             eval_metrics.append(make_maxsig_metric_cls(bins=100, mode='asimov', clamp_nonneg=True, clip01=True))
         if self.use_cb_focal:
-            eval_metrics.append(make_cb_focal_metric_cls(num_classes=num_classes, gamma=self.floss_gamma, device=torch.device("cpu")))
+            eval_metrics.append(
+                make_cb_focal_metric_cls(
+                    num_classes=num_classes,
+                    gamma=self.floss_gamma,
+                    device=torch.device("cpu"),
+                    counts=counts_train,
+                )
+            )
         return loss_fn, eval_metrics, counts_train, num_classes
+
+    @staticmethod
+    def _make_stratified_eval_subset(
+        X: np.ndarray,
+        y: np.ndarray,
+        w: np.ndarray,
+        *,
+        max_samples: Optional[int],
+        seed: int,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        if max_samples is None or len(y) <= int(max_samples):
+            return X, y, w
+
+        max_samples = max(int(max_samples), 1)
+        rng = np.random.default_rng(seed)
+        unique_y = np.unique(y)
+        if unique_y.size == 0:
+            return X[:0], y[:0], w[:0]
+
+        target_total = min(max_samples, len(y))
+        class_indices = []
+        remaining = target_total
+        remaining_classes = int(unique_y.size)
+        for cls in unique_y:
+            idx = np.flatnonzero(y == cls)
+            if idx.size == 0:
+                remaining_classes -= 1
+                continue
+
+            share = int(round(target_total * (idx.size / float(len(y)))))
+            min_keep = 1 if remaining >= remaining_classes else 0
+            keep = max(min_keep, share)
+            keep = min(keep, idx.size, remaining)
+            if keep > 0:
+                class_indices.append(rng.choice(idx, size=keep, replace=False))
+                remaining -= keep
+            remaining_classes -= 1
+
+        if remaining > 0:
+            used = np.concatenate(class_indices) if class_indices else np.empty(0, dtype=np.int64)
+            mask = np.ones(len(y), dtype=bool)
+            mask[used] = False
+            pool = np.flatnonzero(mask)
+            if pool.size > 0:
+                extra = rng.choice(pool, size=min(remaining, pool.size), replace=False)
+                class_indices.append(extra)
+
+        if not class_indices:
+            return X[:0], y[:0], w[:0]
+
+        sel = np.sort(np.concatenate(class_indices))
+        return X[sel], y[sel], w[sel]
+
+    @staticmethod
+    def _make_random_eval_subset(
+        X: np.ndarray,
+        y: np.ndarray,
+        w: np.ndarray,
+        *,
+        max_samples: Optional[int],
+        seed: int,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        if max_samples is None or len(y) <= int(max_samples):
+            return X, y, w
+
+        max_samples = max(int(max_samples), 1)
+        if len(y) == 0:
+            return X[:0], y[:0], w[:0]
+
+        rng = np.random.default_rng(seed)
+        sel = np.sort(rng.choice(len(y), size=min(max_samples, len(y)), replace=False))
+        return X[sel], y[sel], w[sel]
+
+    def _make_train_eval_subset(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        w: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        if not self.report_train_eval:
+            return X, y, w
+        return self._make_stratified_eval_subset(
+            X,
+            y,
+            w,
+            max_samples=self.train_eval_max_samples,
+            seed=self.train_eval_seed,
+        )
+
+    def _make_val_eval_subset(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        w: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return self._make_random_eval_subset(
+            X,
+            y,
+            w,
+            max_samples=self.val_eval_max_samples,
+            seed=self.val_eval_seed,
+        )
 
     def build_train_info(self, data: Dict[str, Any],
                          loss_fn,
                          eval_metrics,
                          model_save_path: str) -> Dict[str, Any]:
         callbacks = [SaveEachEpochCallback(save_dir=os.path.join(model_save_path, "checkpoints"))]
+        X_val_eval, y_val_eval, w_val_eval = self._make_val_eval_subset(
+            data["val_features"], data["val_y"], data["val_weight"]
+        )
+        if self.enable_tensorboard:
+            num_classes = int(max(np.max(data["train_y"]), np.max(data["val_y"]))) + 1
+            tb_metadata = dict(
+                config_name=self.config_name,
+                batch_size=int(self.batch_size),
+                virtual_batch_size=int(self.batch_size // self.num_virtual_minibatches),
+                train_events=int(data["train_features"].shape[0]),
+                val_events=int(data["val_features"].shape[0]),
+                val_eval_events=int(X_val_eval.shape[0]),
+                feature_count=int(data["train_features"].shape[1]),
+                feature_names=list(data.get("feature_names") or []),
+                categorical_columns=list(data.get("cat_columns") or []),
+                preprocess_info=data.get("preprocess_info"),
+                fold=data.get("fold"),
+                era=data.get("era"),
+                train_label_counts=np.bincount(data["train_y"], minlength=num_classes).tolist(),
+                val_label_counts=np.bincount(data["val_y"], minlength=num_classes).tolist(),
+                train_sumw_by_class=np.bincount(
+                    data["train_y"], weights=data["train_weight"], minlength=num_classes
+                ).astype(np.float64).tolist(),
+                val_sumw_by_class=np.bincount(
+                    data["val_y"], weights=data["val_weight"], minlength=num_classes
+                ).astype(np.float64).tolist(),
+                val_eval_label_counts=np.bincount(
+                    y_val_eval, minlength=num_classes
+                ).tolist(),
+                val_eval_sumw_by_class=np.bincount(
+                    y_val_eval, weights=w_val_eval, minlength=num_classes
+                ).astype(np.float64).tolist(),
+                train_weight=data["train_weight"],
+                val_weight=data["val_weight"],
+            )
+            callbacks.append(
+                TensorBoardCallback(
+                    log_dir=os.path.join(model_save_path, self.tensorboard_subdir),
+                    batch_freq=self.tensorboard_batch_freq,
+                    histogram_freq=self.tensorboard_histogram_freq,
+                    histogram_max_samples=self.tensorboard_histogram_max_samples,
+                    batch_ema_alpha=self.tensorboard_batch_ema_alpha,
+                    log_text=self.tensorboard_log_text,
+                    log_distributions=self.tensorboard_log_distributions,
+                    log_params=self.tensorboard_log_params,
+                    log_grads=self.tensorboard_log_grads,
+                    metadata=tb_metadata,
+                )
+            )
+        eval_set = [(X_val_eval, y_val_eval, w_val_eval)]
+        eval_name = ["val"]
+        if self.report_train_eval:
+            X_eval_tr, y_eval_tr, w_eval_tr = self._make_train_eval_subset(
+                data["train_features"], data["train_y"], data["train_weight"]
+            )
+            eval_set.insert(0, (X_eval_tr, y_eval_tr, w_eval_tr))
+            eval_name.insert(0, "train")
+
         return dict(
             X_train=data["train_features"],
             y_train=data["train_y"],
             w_train=data["train_weight"],
-            eval_set=[(data["val_features"], data["val_y"], data["val_weight"])],
+            eval_set=eval_set,
+            eval_name=eval_name,
             eval_metric=eval_metrics,
             max_epochs=1000,
             num_workers=self.num_workers,
@@ -415,18 +723,27 @@ class TabNetTrainConfig:
                          train_info: Dict[str, Any],
                          floss_gamma: float,
                          counts_train: np.ndarray,
+                         preprocess_info: Dict[str, Any] = None,
                          *,
                          cfg: "TabNetTrainConfig" = None,   # ← 추가: 현재 설정 인스턴스
                          save_config_py: bool = True,       # ← 추가: .py 복사 여부
                          save_config_json: bool = True):    # ← 추가: JSON 저장 여부
         os.makedirs(model_save_path, exist_ok=True)
+        train_info_serialized = {
+            k: v for k, v in train_info.items()
+            if k not in ["X_train", "y_train", "w_train", "eval_set", "loss_fn", "callbacks", "eval_metric"]
+        }
+        eval_names = list(train_info.get("eval_name", []))
+        eval_set = list(train_info.get("eval_set", []))
+        for name, payload in zip(eval_names, eval_set):
+            if len(payload) < 2:
+                continue
+            train_info_serialized[f"{name}_eval_events"] = int(payload[1].shape[0])
 
         # info.txt
         with open(os.path.join(model_save_path, "info.txt"), "w") as f:
             f.write("Training info\n")
-            for k, v in train_info.items():
-                if k in ["X_train", "y_train", "w_train", "eval_set", "loss_fn", "callbacks", "eval_metric"]:
-                    continue
+            for k, v in train_info_serialized.items():
                 f.write(f"{k}: {v}\n")
             f.write(f"gamma: {floss_gamma}\n")
             f.write(f"train_counts: {counts_train.tolist()}\n")
@@ -438,16 +755,20 @@ class TabNetTrainConfig:
             f.write("data info\n")
             for k, v in data_info.items():
                 f.write(f"{k}: {v}\n")
+            f.write("###########################################################\n")
+            f.write("preprocess info\n")
+            for k, v in (preprocess_info or {}).items():
+                f.write(f"{k}: {v}\n")
 
         # info.npy (그대로 유지)
         np.save(
             os.path.join(model_save_path, "info.npy"),
             np.array(
                 {
-                    "train_info": {k: v for k, v in train_info.items()
-                                   if k not in ["X_train", "y_train", "w_train", "eval_set", "loss_fn", "callbacks", "eval_metric"]},
+                    "train_info": train_info_serialized,
                     "model_info": model_info,
                     "data_info": data_info,
+                    "preprocess_info": preprocess_info,
                 },
                 dtype=object,
             ),

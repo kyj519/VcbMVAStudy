@@ -17,9 +17,9 @@ class TabNetTrainConfig(Base):
 
     n_d: int = 64
     n_a: int = 64
-    n_steps: int = 10
-    T0: int = 10
-    patience: int = 100
+    n_steps: int = 8
+    T0: int = 20
+    patience: int = 300
     batch_size: int = 8192*4
     lr: float = 2e-3 
     cat_emb_dim: int = 2 
@@ -38,12 +38,12 @@ class TabNetTrainConfig(Base):
             "pt_w_d",
             "eta_w_u",
             "eta_w_d",
-            "ilr_dim1_w_u",
-            "ilr_dim1_w_d",
-            "ilr_dim2_w_u",
-            "ilr_dim2_w_d",
-            # "Cat_w_u",
-            # "Cat_w_d",
+            # "ilr_dim1_w_u",
+            # "ilr_dim1_w_d",
+            # "ilr_dim2_w_u",
+            # "ilr_dim2_w_d",
+            "Cat_w_u",
+            "Cat_w_d",
             # "N0_w_u",
             # "L0_w_u",
             # "C0_w_u",
@@ -75,7 +75,11 @@ class TabNetTrainConfig(Base):
             "logp_class_4",
             "logp_class_5",
             "detection_score_logp",
-            "assignment_logp"
+            "assignment_logp",
+            "n_bjets",
+            "n_jets",
+            "n_cjets",
+            "ht"
         ]
     )
 
@@ -125,100 +129,100 @@ class TabNetTrainConfig(Base):
         ]
         for e in eras:
             cls0 += [
-                (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/Mu_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_Vcb_powheg.root",
                  "Template_Training_Tree", cuts['RECO_CORRECT_MASK']),
-                (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/El_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_Vcb_powheg.root",
                  "Template_Training_Tree", cuts['RECO_CORRECT_MASK']),
             ]
             cls1 += [
-                (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/Mu_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_Vcb_powheg.root",
                  "Template_Training_Tree", f'!{cuts["RECO_CORRECT_MASK"]}'),
-                (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/El_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_Vcb_powheg.root",
                  "Template_Training_Tree", f'!{cuts["RECO_CORRECT_MASK"]}'),
             ]
 
             # class 1: TTLJ(W->CS, CD) + BB
             cls2 += [
-                (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/Mu_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'({cuts["HF_BB_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
-                (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/El_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'({cuts["HF_BB_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
             ]
             # class 2: TTLJ(W->US, UD) + BB
             cls3 += [
-                (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/Mu_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'({cuts["HF_BB_MASK"]})&&({cuts["UX_DECAY_MASK"]})'),
-                (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/El_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'({cuts["HF_BB_MASK"]})&&({cuts["UX_DECAY_MASK"]})'),
             ]
             # class 3: TTLJ(W->CS, CD) + CC
             cls4 += [
-                (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/Mu_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'({cuts["HF_CC_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
-                (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/El_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'({cuts["HF_CC_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
             ]
             # class 4: TTLJ(W->CS, CD) + light
             cls5 += [
-                (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/Mu_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'(!{cuts["HF_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
-                (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/El_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'(!{cuts["HF_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
             ]
             # class 5: TTLJ(W->US, UD) + not BB
             cls6 += [
-                (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/Mu_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'(!{cuts["HF_BB_MASK"]})&&({cuts["UX_DECAY_MASK"]})'),
-                (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_QuadJet_TemplateTraining/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_powheg.root",
+                (f"{sample_folder_loc}/{result_folder_name}/El_Unmapped_QuadJet_TemplateTraining_PseudoCont/{e}/TTLJ_powheg.root",
                  "Template_Training_Tree", f'(!{cuts["HF_BB_MASK"]})&&({cuts["UX_DECAY_MASK"]})'),
             ]
 
             # cls0 += [
-            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "Mu_Inclusive_Central_TTLJ_Vcb", cuts['RECO_CORRECT_MASK']),
-            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "El_Inclusive_Central_TTLJ_Vcb", cuts['RECO_CORRECT_MASK']),
             # ]
             # cls1 += [
-            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "Mu_Inclusive_Central_TTLJ_Vcb", f'!{cuts["RECO_CORRECT_MASK"]}'),
-            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "El_Inclusive_Central_TTLJ_Vcb", f'!{cuts["RECO_CORRECT_MASK"]}'),
             # ]
 
             # # class 1: TTLJ(W->CS, CD) + BB
             # cls2 += [
-            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "Mu_Inclusive_Central_TTLJ", f'({cuts["HF_BB_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
-            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "El_Inclusive_Central_TTLJ", f'({cuts["HF_BB_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
             # ]
             # # class 2: TTLJ(W->US, UD) + BB
             # cls3 += [
-            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "Mu_Inclusive_Central_TTLJ", f'({cuts["HF_BB_MASK"]})&&({cuts["UX_DECAY_MASK"]})'),
-            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "El_Inclusive_Central_TTLJ", f'({cuts["HF_BB_MASK"]})&&({cuts["UX_DECAY_MASK"]})'),
             # ]
             # # class 3: TTLJ(W->CS, CD) + CC
             # cls4 += [
-            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "Mu_Inclusive_Central_TTLJ", f'({cuts["HF_CC_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
-            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "El_Inclusive_Central_TTLJ", f'({cuts["HF_CC_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
             # ]
             # # class 4: TTLJ(W->CS, CD) + light
             # cls5 += [
-            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "Mu_Inclusive_Central_TTLJ", f'(!{cuts["HF_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
-            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "El_Inclusive_Central_TTLJ", f'(!{cuts["HF_MASK"]})&&({cuts["CX_DECAY_MASK"]})'),
             # ]
             # # class 5: TTLJ(W->US, UD) + not BB
             # cls6 += [
-            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/Mu_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "Mu_Inclusive_Central_TTLJ", f'(!{cuts["HF_BB_MASK"]})&&({cuts["UX_DECAY_MASK"]})'),
-            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees/{e}/Skim_Vcb_SL_Skim_v2_TTLJ_Vcb_powheg.root",
+            #     (f"{sample_folder_loc}/{result_folder_name}/El_OTv3_OutputTrees//{e}/TTLJ_Vcb_powheg.root",
             #      "El_Inclusive_Central_TTLJ", f'(!{cuts["HF_BB_MASK"]})&&({cuts["UX_DECAY_MASK"]})'),
             # ]
             

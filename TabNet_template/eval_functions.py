@@ -49,12 +49,14 @@ class CBFocalLossMetric(Metric):
     def __init__(self,
                  num_classes: int | None = None,
                  gamma: float = 0.0,
-                 device: torch.device = torch.device("cpu")):
+                 device: torch.device = torch.device("cpu"),
+                 counts: np.ndarray | None = None):
         self._name = "CBFocalLoss[val]"
         self._maximize = False
         self.num_classes = None if num_classes is None else int(num_classes)
         self.gamma = float(gamma)
         self.device = device
+        self.counts = None if counts is None else np.asarray(counts, dtype=np.float64)
 
     def __call__(self, y_true, y_score, y_w):
         import numpy as np
@@ -71,12 +73,14 @@ class CBFocalLossMetric(Metric):
 
         # 필요시 num_classes 유추
         num_classes = self.num_classes or (int(np.max(y_true)) + 1)
-        counts_val = compute_class_counts(y_true, w, num_classes=num_classes)
+        counts_ref = self.counts
+        if counts_ref is None:
+            counts_ref = compute_class_counts(y_true, w, num_classes=num_classes)
 
         loss = CB_loss(
             torch.tensor(y_true, dtype=torch.long, device="cpu"),
             torch.tensor(log_prob, dtype=torch.float32, device="cpu"),
-            counts_val,
+            counts_ref,
             no_of_classes=num_classes,
             device=torch.device("cpu"),
             gamma=self.gamma,
@@ -218,10 +222,20 @@ class MaxSignificance(Metric):
 # Factory functions
 # --------------------------------
 
-def make_cb_focal_metric_cls(num_classes: int, gamma: float, device: torch.device):
+def make_cb_focal_metric_cls(
+    num_classes: int,
+    gamma: float,
+    device: torch.device,
+    counts: np.ndarray | None = None,
+):
     class _CBFocalLossMetricConfigured(CBFocalLossMetric):
         def __init__(self):
-            super().__init__(num_classes=num_classes, gamma=gamma, device=device)
+            super().__init__(
+                num_classes=num_classes,
+                gamma=gamma,
+                device=device,
+                counts=counts,
+            )
     _CBFocalLossMetricConfigured.__name__ = f"CBFocalLossMetric_nc{num_classes}_g{gamma}"
     return _CBFocalLossMetricConfigured
 

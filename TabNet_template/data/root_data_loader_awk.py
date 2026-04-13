@@ -453,6 +453,14 @@ def load_root_as_dataset_kfold(
     n_splits: int = 3,
     seed: int = 42,
     assume_btag_mode: bool = True,
+    preprocess_mode: Optional[str] = None,
+    preprocess_log_columns: Optional[Sequence[str]] = None,
+    preprocess_norm_columns: Optional[Sequence[str]] = None,
+    preprocess_log_norm_columns: Optional[Sequence[str]] = None,
+    preprocess_winsorize_columns: Optional[Sequence[Tuple[str, Tuple[float, float]]]] = None,
+    preprocess_winsorize_log_columns: Optional[Sequence[Tuple[str, Tuple[float, float]]]] = None,
+    preprocess_winsorize_norm_columns: Optional[Sequence[Tuple[str, Tuple[float, float]]]] = None,
+    preprocess_winsorize_log_norm_columns: Optional[Sequence[Tuple[str, Tuple[float, float]]]] = None,
     infer_mode: bool = False
 ) -> Dict[str, np.ndarray]:
     """Load multiple ROOT trees into a single dataset and build reproducible K-fold splits.
@@ -481,6 +489,18 @@ def load_root_as_dataset_kfold(
     assume_btag_mode : bool
         If True, use b-tag weight set; otherwise use c-tag variant.
     """
+    # fold별 전처리는 학습/추론/export 단계에서 공통 적용한다.
+    _ = (
+        preprocess_mode,
+        preprocess_log_columns,
+        preprocess_norm_columns,
+        preprocess_log_norm_columns,
+        preprocess_winsorize_columns,
+        preprocess_winsorize_log_columns,
+        preprocess_winsorize_norm_columns,
+        preprocess_winsorize_log_norm_columns,
+    )
+
     #print varlist in red
     print("\033[31m" + "[load_root_as_dataset_kfold] get varlist:" + str(varlist) + "\033[0m")
     if any(v.lower() == "weight" for v in varlist):
@@ -866,6 +886,8 @@ def save_dataset_npz_json(path_prefix: str, data: Dict[str, Any], *, include_deb
     meta = {
         "features": list(data["features"]),
         "cat_columns": list(data.get("cat_columns", [])),
+        "cache_schema": "raw_features_v3",
+        "sample_bkg": data.get("_debug", {}).get("sample_bkg", None),
     }
     if include_debug_minimal:
         dbg = data.get("_debug", {})
@@ -914,6 +936,7 @@ def load_dataset_npz_json(path_prefix: str) -> Dict[str, Any]:
         "class_weight": class_weight,
         "sumW": sumW,
         "count": count,
+        "_cache_meta": meta,
     }
     return data
 

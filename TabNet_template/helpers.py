@@ -1,5 +1,6 @@
 from contextlib import contextmanager, nullcontext
 import importlib
+import json
 import re
 import torch
 import numpy as np
@@ -580,6 +581,288 @@ class SaveEachEpochCallback(Callback):
         # TabNet은 zip archive로 저장됨
         self.trainer.save_model(filename)
         print(f"[Checkpoint] Saved model at {filename}.zip")
+
+
+class TensorBoardCallback(Callback):
+    def __init__(
+        self,
+        log_dir="tensorboard",
+        batch_freq=1,
+        histogram_freq=20,
+        histogram_max_samples=200000,
+        batch_ema_alpha=0.98,
+        log_text=True,
+        log_distributions=True,
+        log_params=True,
+        log_grads=True,
+        metadata=None,
+    ):
+        self.log_dir = log_dir
+        self.batch_freq = max(int(batch_freq), 0)
+        self.histogram_freq = max(int(histogram_freq), 0)
+        self.histogram_max_samples = max(int(histogram_max_samples), 1)
+        self.batch_ema_alpha = float(batch_ema_alpha)
+        self.log_text = bool(log_text)
+        self.log_distributions = bool(log_distributions)
+        self.log_params = bool(log_params)
+        self.log_grads = bool(log_grads)
+        self.metadata = dict(metadata or {})
+        self.writer = None
+        self.batch_step = 0
+        self.batch_loss_ema = None
+        self.rng = np.random.default_rng(12345)
+
+    @staticmethod
+    def _sanitize_tag(name: str) -> str:
+        return re.sub(r"[^A-Za-z0-9_./-]+", "_", str(name))
+
+    @staticmethod
+    def _json_ready(value):
+        if isinstance(value, (np.integer,)):
+            return int(value)
+        if isinstance(value, (np.floating,)):
+            return float(value)
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        if isinstance(value, dict):
+            return {str(k): TensorBoardCallback._json_ready(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [TensorBoardCallback._json_ready(v) for v in value]
+        return value
+
+    def _sample_array(self, values):
+        if values is None:
+            return None
+        arr = np.asarray(values)
+        if arr.size == 0:
+            return None
+        arr = arr.reshape(-1)
+        if arr.size > self.histogram_max_samples:
+            idx = self.rng.choice(arr.size, size=self.histogram_max_samples, replace=False)
+            arr = arr[idx]
+        return arr
+
+    def _add_histogram(self, tag: str, values, step: int):
+        if self.writer is None:
+            return
+        arr = self._sample_array(values)
+        if arr is None:
+            return
+        if arr.dtype == object:
+            return
+        try:
+            self.writer.add_histogram(self._sanitize_tag(tag), arr, int(step))
+        except Exception:
+            return
+
+    def _add_scalar(self, tag: str, value, step: int):
+        if self.writer is None or value is None:
+            return
+        try:
+            self.writer.add_scalar(self._sanitize_tag(tag), float(value), int(step))
+        except Exception:
+            return
+
+    def _log_metadata_text(self):
+        if self.writer is None or not self.log_text:
+            return
+
+        text_meta = {}
+        for key, value in self.metadata.items():
+            if key.endswith("_weight"):
+                continue
+            text_meta[key] = self._json_ready(value)
+        try:
+            summary = json.dumps(text_meta, ensure_ascii=False, indent=2)
+            self.writer.add_text("run/summary", f"```json\n{summary}\n```", 0)
+        except Exception:
+            pass
+
+        feature_names = self.metadata.get("feature_names") or []
+        if feature_names:
+            try:
+                self.writer.add_text("run/feature_names", "\n".join(map(str, feature_names)), 0)
+            except Exception:
+                pass
+
+    def _log_metadata_distributions(self):
+        if self.writer is None or not self.log_distributions:
+            return
+
+        for split in ("train", "val"):
+            weight = self.metadata.get(f"{split}_weight")
+            if weight is not None:
+                weight_arr = np.asarray(weight, dtype=np.float64)
+                self._add_histogram(f"data/{split}/weight", weight_arr, 0)
+                self._add_scalar(f"data/{split}/weight_mean", np.mean(weight_arr), 0)
+                self._add_scalar(f"data/{split}/weight_std", np.std(weight_arr), 0)
+                self._add_scalar(f"data/{split}/weight_min", np.min(weight_arr), 0)
+                self._add_scalar(f"data/{split}/weight_max", np.max(weight_arr), 0)
+                self._add_scalar(f"data/{split}/neg_weight_frac", np.mean(weight_arr < 0), 0)
+
+            label_counts = self.metadata.get(f"{split}_label_counts") or []
+            for idx, value in enumerate(label_counts):
+                self._add_scalar(f"data/{split}/class_count/{idx}", value, 0)
+
+            sumw_by_class = self.metadata.get(f"{split}_sumw_by_class") or []
+            for idx, value in enumerate(sumw_by_class):
+                self._add_scalar(f"data/{split}/class_sumW/{idx}", value, 0)
+
+    def _log_model_stats(self, epoch: int):
+        network = getattr(self.trainer, "network", None)
+        if network is None:
+            return
+
+        total_param_sq = 0.0
+        total_grad_sq = 0.0
+        max_grad_abs = 0.0
+        num_grad_tensors = 0
+
+        log_histograms = self.histogram_freq > 0 and (
+            epoch == 0 or (int(epoch) + 1) % self.histogram_freq == 0
+        )
+
+        for name, param in network.named_parameters():
+            param_data = param.detach().float()
+            total_param_sq += float(torch.sum(param_data * param_data).item())
+
+            tag_name = self._sanitize_tag(name.replace(".", "/"))
+            if self.log_params and log_histograms:
+                self._add_histogram(f"params/{tag_name}", param_data.cpu().numpy(), epoch)
+
+            grad = param.grad
+            if grad is None:
+                continue
+
+            grad_data = grad.detach().float()
+            total_grad_sq += float(torch.sum(grad_data * grad_data).item())
+            max_grad_abs = max(max_grad_abs, float(torch.max(torch.abs(grad_data)).item()))
+            num_grad_tensors += 1
+            if self.log_grads and log_histograms:
+                self._add_histogram(f"grads/{tag_name}", grad_data.cpu().numpy(), epoch)
+
+        self._add_scalar("model/param_norm_l2", total_param_sq ** 0.5, epoch)
+        if num_grad_tensors > 0:
+            self._add_scalar("model/grad_norm_l2", total_grad_sq ** 0.5, epoch)
+            self._add_scalar("model/grad_abs_max", max_grad_abs, epoch)
+
+    def _log_gap_metrics(self, metrics, epoch: int):
+        if not metrics:
+            return
+        for key, train_value in metrics.items():
+            if not str(key).startswith("train_"):
+                continue
+            suffix = str(key)[len("train_") :]
+            val_key = f"val_{suffix}"
+            if val_key not in metrics:
+                continue
+            val_value = metrics.get(val_key)
+            try:
+                gap = float(val_value) - float(train_value)
+                ratio = float(val_value) / max(abs(float(train_value)), 1e-12)
+            except Exception:
+                continue
+            safe_suffix = self._sanitize_tag(suffix)
+            self._add_scalar(f"gap/{safe_suffix}", gap, epoch)
+            self._add_scalar(f"gap_ratio/{safe_suffix}", ratio, epoch)
+
+    def on_train_begin(self, logs=None):
+        try:
+            from torch.utils.tensorboard import SummaryWriter
+        except Exception as exc:
+            print(f"[TensorBoard] disabled: {exc}")
+            self.writer = None
+            return
+
+        os.makedirs(self.log_dir, exist_ok=True)
+        self.writer = SummaryWriter(log_dir=self.log_dir)
+        self.batch_step = 0
+        self.batch_loss_ema = None
+        print(f"[TensorBoard] logging to {self.log_dir}")
+        self._log_metadata_text()
+        self._log_metadata_distributions()
+
+    def on_epoch_begin(self, epoch, logs=None):
+        self.epoch_batch_totals = {}
+        self.epoch_batch_weight = 0.0
+
+    def on_batch_end(self, batch, logs=None):
+        if self.writer is None:
+            return
+
+        logs = logs or {}
+        batch_size = logs.get("batch_size")
+        weight = float(batch_size) if batch_size is not None else 1.0
+        self.epoch_batch_weight += weight
+        for name, value in logs.items():
+            if name == "batch_size" or value is None:
+                continue
+            try:
+                numeric_value = float(value)
+            except Exception:
+                continue
+            self.epoch_batch_totals[name] = self.epoch_batch_totals.get(name, 0.0) + weight * numeric_value
+
+        if self.batch_freq <= 0:
+            return
+
+        self.batch_step += 1
+        if self.batch_step % self.batch_freq != 0:
+            return
+
+        loss = logs.get("loss")
+        if loss is not None:
+            self._add_scalar("batch/loss", loss, self.batch_step)
+            if self.batch_loss_ema is None:
+                self.batch_loss_ema = float(loss)
+            else:
+                alpha = min(max(self.batch_ema_alpha, 0.0), 0.9999)
+                self.batch_loss_ema = alpha * self.batch_loss_ema + (1.0 - alpha) * float(loss)
+            self._add_scalar("batch/loss_ema", self.batch_loss_ema, self.batch_step)
+        task_loss = logs.get("task_loss")
+        if task_loss is not None:
+            self._add_scalar("batch/task_loss", task_loss, self.batch_step)
+        M_loss = logs.get("M_loss")
+        if M_loss is not None:
+            self._add_scalar("batch/M_loss", M_loss, self.batch_step)
+        sparse_penalty = logs.get("sparse_penalty")
+        if sparse_penalty is not None:
+            self._add_scalar("batch/sparse_penalty", sparse_penalty, self.batch_step)
+        if batch_size is not None:
+            self._add_scalar("batch/batch_size", batch_size, self.batch_step)
+
+        opt = getattr(self.trainer, "optimizer", None) or getattr(
+            self.trainer, "_optimizer", None
+        )
+        if opt is not None:
+            self._add_scalar("batch/lr", opt.param_groups[-1]["lr"], self.batch_step)
+
+    def on_epoch_end(self, epoch, logs=None):
+        if self.writer is None:
+            return
+
+        metrics = getattr(getattr(self.trainer, "history", None), "epoch_metrics", None)
+        if not metrics:
+            return
+
+        if self.epoch_batch_weight > 0:
+            for name, total in self.epoch_batch_totals.items():
+                if name == "loss":
+                    continue
+                self._add_scalar(f"epoch_train/{name}", total / self.epoch_batch_weight, epoch)
+
+        for name, value in metrics.items():
+            self._add_scalar(f"epoch/{name}", value, epoch)
+        self._log_gap_metrics(metrics, epoch)
+        self._log_model_stats(int(epoch))
+        self.writer.flush()
+
+    def on_train_end(self, logs=None):
+        if self.writer is None:
+            return
+        self.writer.flush()
+        self.writer.close()
+        self.writer = None
 
 
 def _fnv1a64(s: str) -> np.uint64:

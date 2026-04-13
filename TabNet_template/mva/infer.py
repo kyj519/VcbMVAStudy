@@ -24,6 +24,8 @@ from helpers import (
     predict_log_proba_fast,
     view_fold,
 )
+from tabnet_compat import load_tabnet_model
+from input_preprocessing import apply_feature_preprocess
 
 from data.root_data_loader_awk import load_root_as_dataset_kfold as load_data_kfold
 
@@ -471,18 +473,48 @@ def _resolve_trt_plan_path(model_root: str, fold_idx: int, prefer_int8: bool = F
     return None
 
 
+def _embedded_preprocess_from_metadata(model_meta) -> bool:
+    if model_meta is None:
+        return False
+    custom = getattr(model_meta, "custom_metadata_map", None) or {}
+    flag = str(custom.get("tabnet_preprocess_embedded", "0")).strip().lower()
+    return flag in {"1", "true", "yes"}
+
+
+def _onnx_has_embedded_preprocess(onnx_path: Optional[str]) -> bool:
+    if not onnx_path:
+        return False
+    try:
+        import onnxruntime as ort
+    except Exception:
+        return False
+    try:
+        session = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+    except Exception:
+        return False
+    return _embedded_preprocess_from_metadata(session.get_modelmeta())
+
+
 class _TorchFoldRunner:
-    def __init__(self, model: TabNetClassifier):
+    def __init__(self, model: TabNetClassifier, preprocess_info=None):
         self.model = model
+        self.preprocess_info = preprocess_info
 
     def predict_log_proba(self, arr: np.ndarray) -> np.ndarray:
+        arr = apply_feature_preprocess(arr, self.preprocess_info)
         return predict_log_proba_fast(
             self.model, arr, num_workers=_dl_workers_for_infer()
         )
 
 
 class _OnnxFoldRunner:
-    def __init__(self, onnx_path: str, prefer_trt_provider: bool = False, batch_size: Optional[int] = None):
+    def __init__(
+        self,
+        onnx_path: str,
+        prefer_trt_provider: bool = False,
+        batch_size: Optional[int] = None,
+        external_preprocess_info=None,
+    ):
         try:
             import onnxruntime as ort
         except Exception as exc:
@@ -512,12 +544,20 @@ class _OnnxFoldRunner:
         )
         self.input_name = self.session.get_inputs()[0].name
         self.output_name = self.session.get_outputs()[0].name
+        embedded_preprocess = _embedded_preprocess_from_metadata(
+            self.session.get_modelmeta()
+        )
+        self.preprocess_info = None if embedded_preprocess else external_preprocess_info
         self.batch_size = batch_size or _batch_size_from_env(
             ("ONNX_BATCH_INFER", "BATCH_INFER"), 4096
         )
-        print(f"[onnx] Loaded {onnx_path} with providers={providers}")
+        print(
+            f"[onnx] Loaded {onnx_path} with providers={providers}, "
+            f"embedded_preprocess={embedded_preprocess}"
+        )
 
     def predict_log_proba(self, arr: np.ndarray) -> np.ndarray:
+        arr = apply_feature_preprocess(arr, self.preprocess_info)
         arr = np.asarray(arr, dtype=np.float32, order="C")
         n = arr.shape[0]
         if n == 0:
@@ -540,7 +580,12 @@ class _OnnxFoldRunner:
 
 
 class _TrtPlanFoldRunner:
-    def __init__(self, plan_path: str, batch_size: Optional[int] = None):
+    def __init__(
+        self,
+        plan_path: str,
+        batch_size: Optional[int] = None,
+        external_preprocess_info=None,
+    ):
         try:
             import tensorrt as trt  # type: ignore
             import pycuda.driver as cuda  # type: ignore
@@ -618,11 +663,13 @@ class _TrtPlanFoldRunner:
             self.input_dtype = np.dtype(trt.nptype(self.engine.get_tensor_dtype(self.input_name)))
             self.output_dtype = np.dtype(trt.nptype(self.engine.get_tensor_dtype(self.output_name)))
         self._num_classes = None
+        self.preprocess_info = external_preprocess_info
         print(f"[trt] Loaded TensorRT plan from {plan_path}")
 
     def predict_log_proba(self, arr: np.ndarray) -> np.ndarray:
         cuda = self.cuda
         trt = self.trt
+        arr = apply_feature_preprocess(arr, self.preprocess_info)
         arr = np.asarray(arr, dtype=self.input_dtype, order="C")
         n = arr.shape[0]
         if n == 0:
@@ -724,14 +771,25 @@ class _TrtPlanFoldRunner:
         return np.empty((0, n_class), dtype=np.float64)
 
 
-def _maybe_create_trt_plan_runner(plan_path: Optional[str]) -> Optional[_TrtPlanFoldRunner]:
+def _maybe_create_trt_plan_runner(
+    plan_path: Optional[str], *, external_preprocess_info=None
+) -> Optional[_TrtPlanFoldRunner]:
     if plan_path is None:
         return None
     try:
-        return _TrtPlanFoldRunner(plan_path)
+        return _TrtPlanFoldRunner(
+            plan_path, external_preprocess_info=external_preprocess_info
+        )
     except Exception as exc:
         print(f"[trt] Failed to use plan {plan_path}: {exc}")
         return None
+
+
+def _load_fold_meta(run_dir: str) -> dict:
+    info_path = os.path.join(run_dir, "info.npy")
+    if not os.path.exists(info_path):
+        return {}
+    return np.load(info_path, allow_pickle=True)[()]
 
 
 def _load_models_cached(input_model_path: str, backend: str = "pytorch"):
@@ -745,30 +803,63 @@ def _load_models_cached(input_model_path: str, backend: str = "pytorch"):
         raise RuntimeError(f"No folds under {input_model_path}")
 
     model_folds = {}
+    meta = None
     prefer_int8 = _prefer_int8(backend)
     for idx, name, run_dir in folds:
+        fold_meta = _load_fold_meta(run_dir)
+        preprocess_info = fold_meta.get("preprocess_info")
+        if meta is None:
+            meta = fold_meta
+
         if backend == "pytorch":
             model = TabNetClassifier()
             z = _pick_zip(run_dir)
             if z is None:
                 raise FileNotFoundError(f"No model .zip in {run_dir}")
-            model.load_model(z)
-            model_folds[idx] = _TorchFoldRunner(model)
+            load_tabnet_model(model, z)
+            model_folds[idx] = _TorchFoldRunner(model, preprocess_info=preprocess_info)
         elif backend.startswith("onnx"):
-            onnx_path = _resolve_onnx_path(input_model_path, idx, prefer_int8=prefer_int8)
-            model_folds[idx] = _OnnxFoldRunner(onnx_path, prefer_trt_provider=False)
+            onnx_path = _resolve_onnx_path(
+                input_model_path, idx, prefer_int8=prefer_int8
+            )
+            model_folds[idx] = _OnnxFoldRunner(
+                onnx_path,
+                prefer_trt_provider=False,
+                external_preprocess_info=preprocess_info,
+            )
         elif backend.startswith("tensorrt"):
+            plan_path = _resolve_trt_plan_path(
+                input_model_path, idx, prefer_int8=prefer_int8
+            )
+            onnx_path = None
+            try:
+                onnx_path = _resolve_onnx_path(
+                    input_model_path, idx, prefer_int8=prefer_int8
+                )
+            except FileNotFoundError:
+                pass
+            external_preprocess_info = (
+                None if _onnx_has_embedded_preprocess(onnx_path) else preprocess_info
+            )
             runner = _maybe_create_trt_plan_runner(
-                _resolve_trt_plan_path(input_model_path, idx, prefer_int8=prefer_int8)
+                plan_path, external_preprocess_info=external_preprocess_info
             )
             if runner is None:
-                onnx_path = _resolve_onnx_path(input_model_path, idx, prefer_int8=prefer_int8)
-                runner = _OnnxFoldRunner(onnx_path, prefer_trt_provider=True)
+                if onnx_path is None:
+                    raise FileNotFoundError(
+                        f"No ONNX model found for fold {idx} under {input_model_path}"
+                    )
+                runner = _OnnxFoldRunner(
+                    onnx_path,
+                    prefer_trt_provider=True,
+                    external_preprocess_info=preprocess_info,
+                )
             model_folds[idx] = runner
         else:
             raise ValueError(f"Unknown backend: {backend}")
 
-    meta = np.load(os.path.join(folds[0][2], "info.npy"), allow_pickle=True)[()]
+    if meta is None:
+        meta = {}
     _MODEL_CACHE[cache_key] = (folds, model_folds, meta)
     return _MODEL_CACHE[cache_key]
 
@@ -1161,11 +1252,12 @@ def infer_with_iter(
                 if f.endswith(".root")
             ]
             # only keep files "DATA" in their name for data era
-            #files = [f for f in files if (("bcTo" in f))]
+            files = [f for f in files if (("4f" in f or "ttH" in f))]
             if files:
                 # legacy files don't have a SPANET partner → keep tuple length 3
                 entries.extend([(file, syst, None) for file in files])
-                
+
+        
         print(f"[info] entries for {e}: {entries}")
         return entries
 

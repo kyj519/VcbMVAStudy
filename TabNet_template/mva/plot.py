@@ -15,7 +15,44 @@ from helpers import (
     task,
     view_fold,
 )
+from input_preprocessing import apply_feature_preprocess
+from tabnet_compat import load_tabnet_model
 from data.root_data_loader_awk import load_dataset_npz_json
+
+
+def _load_fold_preprocess_info(run_dir: str):
+    import os
+    import numpy as np
+
+    info_path = os.path.join(run_dir, "info.npy")
+    if not os.path.exists(info_path):
+        return None
+    info = np.load(info_path, allow_pickle=True)[()]
+    return info.get("preprocess_info")
+
+
+def _pretty_class_label(label: str) -> str:
+    import re
+
+    text = str(label).strip()
+    if text.startswith("$") and text.endswith("$"):
+        text = text[1:-1]
+
+    text = re.sub(r"\\mathrm\{([^}]*)\}", r"\1", text)
+    text = text.replace(r"\to", "→")
+    text = text.replace(r"\bar b", "b")
+    text = text.replace(r"\,", " ")
+    text = text.replace(r"\ ", " ")
+    text = text.replace("{", "").replace("}", "")
+    text = text.replace("(reco correct)", "(Reco. correct)")
+    text = text.replace("(reco wrong)", "(Reco. wrong)")
+    text = re.sub(r"\s*\+\s*", " + ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _pair_label(sig_label: str, bkg_label: str) -> str:
+    return f"{_pretty_class_label(sig_label)} vs {_pretty_class_label(bkg_label)}"
 
 
 def plot(model_save_path, checkpoint_path=None):
@@ -55,6 +92,13 @@ def plot(model_save_path, checkpoint_path=None):
 
         with task(f"[{os.path.basename(run_dir)}] Loading dataset (data.npz)"):
             data_k = view_fold(data, fold)
+            preprocess_info = _load_fold_preprocess_info(run_dir)
+            data_k["train_features"] = apply_feature_preprocess(
+                data_k["train_features"], preprocess_info
+            )
+            data_k["val_features"] = apply_feature_preprocess(
+                data_k["val_features"], preprocess_info
+            )
 
         with task(f"[{os.path.basename(run_dir)}] Model loading"):
             model = TabNetClassifier()
@@ -63,12 +107,12 @@ def plot(model_save_path, checkpoint_path=None):
                 ckpt = _pick_zip(run_dir)
                 if ckpt is None:
                     raise FileNotFoundError(f"No model .zip file found in {run_dir}")
-                model.load_model(ckpt)
+                load_tabnet_model(model, ckpt)
                 out_dir = os.path.join(out_parent_dir)
                 os.makedirs(out_dir, exist_ok=True)
                 print(f"  - Loaded from: {ckpt}")
             else:
-                model.load_model(checkpoint_override)
+                load_tabnet_model(model, checkpoint_override)
                 m = re.search(
                     r"model_epoch(\d+)\.zip$", os.path.basename(checkpoint_override)
                 )
@@ -79,6 +123,7 @@ def plot(model_save_path, checkpoint_path=None):
 
         # ---------- ROC on test ----------
         with task(f"[{os.path.basename(run_dir)}] ROC AUC evaluation and plotting"):
+            pretty_labels = [_pretty_class_label(label) for label in class_labels]
 
             # binary 가정: class 0에 대한 점수 사용 (기존 코드 유지)
             y_inv = np.logical_not(data_k["val_y"]).astype(int)
@@ -88,7 +133,7 @@ def plot(model_save_path, checkpoint_path=None):
             proba = softmax(logit, axis=1)
             proba0 = proba[:, 0]
             num_class = logit.shape[1]
-            label_str = f"{class_labels[0]} (0) vs Others"
+            label_str = f"{pretty_labels[0]} vs Others"
             postTrainingToolkit.ROC_AUC(
                 score=proba0,
                 y=y_inv,
@@ -111,7 +156,7 @@ def plot(model_save_path, checkpoint_path=None):
             if num_class > 1:
                 y_inv_1 = (data_k["val_y"] == 1).astype(int)
                 proba1 = proba[:, 1]
-                label_str_1 = f"{class_labels[1]} (1) vs Others"
+                label_str_1 = f"{pretty_labels[1]} vs Others"
                 postTrainingToolkit.ROC_AUC(
                     score=proba1,
                     y=y_inv_1,
@@ -145,7 +190,7 @@ def plot(model_save_path, checkpoint_path=None):
                 )
                 local_margin = logit[local_mask, sig_idx] - logit[local_mask, bkg_idx]
                 local_score = sigmoid_stable(local_margin)
-                label_str = f"{class_labels[sig_idx]} ({sig_idx}) vs {class_labels[bkg_idx]} ({bkg_idx})"
+                label_str = _pair_label(class_labels[sig_idx], class_labels[bkg_idx])
 
                 scores_by_bkg.append(local_score)
                 yinv_by_bkg.append(local_y)
@@ -159,7 +204,7 @@ def plot(model_save_path, checkpoint_path=None):
                     # weight=data.get("test_weight", None),
                 )
 
-                labels_by_bkg.append(label_str + f" (AUC: {local_auc:.4f})")
+                labels_by_bkg.append(f"{pretty_labels[bkg_idx]} (AUC: {local_auc:.4f})")
 
                 postTrainingToolkit.ROC_AUC(
                     score=local_score,
@@ -177,6 +222,11 @@ def plot(model_save_path, checkpoint_path=None):
                 plot_path=out_dir,
                 fname=f"ROC_class_compare.pdf",
                 labels=labels_by_bkg,
+                extra_text=f"Signal: {pretty_labels[0]}",
+                legend_loc="upper center",
+                legend_bbox_to_anchor=(0.5, -0.12),
+                legend_ncols=2,
+                legend_fontsize=13,
             )
             postTrainingToolkit.ROC_AUC(
                 score=scores_by_bkg,
@@ -185,6 +235,12 @@ def plot(model_save_path, checkpoint_path=None):
                 fname=f"ROC_class_compare_log.pdf",
                 labels=labels_by_bkg,
                 scale="log",
+                log_xmin=1e-3,
+                extra_text=f"Signal: {pretty_labels[0]}",
+                legend_loc="upper center",
+                legend_bbox_to_anchor=(0.5, -0.12),
+                legend_ncols=2,
+                legend_fontsize=13,
             )
 
             if num_class > 1:
@@ -206,7 +262,9 @@ def plot(model_save_path, checkpoint_path=None):
                         logit[local_mask, sig_idx_local] - logit[local_mask, bkg_idx]
                     )
                     local_score = sigmoid_stable(local_margin)
-                    label_str = f"{class_labels[sig_idx_local]} ({sig_idx_local}) vs {class_labels[bkg_idx]} ({bkg_idx})"
+                    label_str = _pair_label(
+                        class_labels[sig_idx_local], class_labels[bkg_idx]
+                    )
 
                     scores_by_bkg_1.append(local_score)
                     yinv_by_bkg_1.append(local_y)
@@ -220,7 +278,9 @@ def plot(model_save_path, checkpoint_path=None):
                         # weight=data.get("test_weight", None),
                     )
 
-                    labels_by_bkg_1.append(label_str + f" (AUC: {local_auc:.4f})")
+                    labels_by_bkg_1.append(
+                        f"{pretty_labels[bkg_idx]} (AUC: {local_auc:.4f})"
+                    )
 
                     postTrainingToolkit.ROC_AUC(
                         score=local_score,
@@ -238,6 +298,11 @@ def plot(model_save_path, checkpoint_path=None):
                     plot_path=out_dir,
                     fname="ROC_class1_compare.pdf",
                     labels=labels_by_bkg_1,
+                    extra_text=f"Signal: {pretty_labels[sig_idx_local]}",
+                    legend_loc="upper center",
+                    legend_bbox_to_anchor=(0.5, -0.12),
+                    legend_ncols=2,
+                    legend_fontsize=13,
                 )
                 postTrainingToolkit.ROC_AUC(
                     score=scores_by_bkg_1,
@@ -246,6 +311,11 @@ def plot(model_save_path, checkpoint_path=None):
                     fname="ROC_class1_compare_log.pdf",
                     labels=labels_by_bkg_1,
                     scale="log",
+                    extra_text=f"Signal: {pretty_labels[sig_idx_local]}",
+                    legend_loc="upper center",
+                    legend_bbox_to_anchor=(0.5, -0.12),
+                    legend_ncols=2,
+                    legend_fontsize=13,
                 )
 
         # ---------- Confusion matrix ----------

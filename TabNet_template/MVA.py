@@ -3,7 +3,6 @@ import os
 import sys
 from pathlib import Path
 
-import ROOT
 import torch
 import torch.multiprocessing as mp
 
@@ -12,23 +11,11 @@ BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from helpers import _load_training_config_module, pick_best_device
-from mva import (
-    infer,
-    infer_and_write,
-    infer_with_iter,
-    make_score_friend_file_parallel,
-    plot,
-    train,
-)
+from helpers import _load_training_config_module
 
 era = ""
 
 mp.set_sharing_strategy("file_system")
-
-# 사용 예시
-device = pick_best_device(min_free_gb=6)  # 6GB 이상 비어있는 GPU 중 최적 선택
-print("Using device:", device)
 
 MODES = ["train", "train_submit", "plot", "infer_iter", "infer"]
 
@@ -155,6 +142,8 @@ def main():
         print("add_year_index is only available for train mode. It will be ignored.")
 
     if args.working_mode == "train":
+        from mva import train
+
         print("Training Mode")
         train(
             model_save_path=args.out_path,
@@ -170,10 +159,14 @@ def main():
         )
 
     elif args.working_mode == "plot":
+        from mva import plot
+
         print("Plotting Mode")
         plot(args.input_model, args.checkpoint)
 
     elif args.working_mode == "infer_iter":
+        from mva import infer_with_iter
+
         print("Inffering Mode (all file iteration)")
         infer_with_iter(
             branch_name=args.branch_name,
@@ -187,6 +180,9 @@ def main():
         )
 
     elif args.working_mode == "infer":
+        import ROOT
+        from mva import make_score_friend_file_parallel
+
         os.environ["OMP_NUM_THREADS"] = "1"
         os.environ["MKL_NUM_THREADS"] = "1"
         os.environ["OPENBLAS_NUM_THREADS"] = "1"

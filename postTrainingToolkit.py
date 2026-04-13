@@ -15,9 +15,15 @@ from scipy.stats import ks_2samp
 ROOT.gStyle.SetOptStat(0)
 ROOT.EnableImplicitMT(16)
 # ROOT.gROOT.LoadMacro(os.path.join(os.environ["DIR_PATH"], "tdrStyle.C"))
-ROOT.gROOT.LoadMacro("/data6/Users/yeonjoon/VcbMVAStudy/tdrStyle.C")
+_TDR_STYLE = "/data6/Users/yeonjoon/VcbMVAStudy/tdrStyle.C"
+if os.path.exists(_TDR_STYLE):
+    ROOT.gROOT.LoadMacro(_TDR_STYLE)
+    ROOT.gROOT.ProcessLine("setTDRStyle();")
 
-ROOT.gROOT.ProcessLine("setTDRStyle();")
+try:
+    hep.style.use(hep.style.CMS)
+except Exception:
+    pass
 
 
 def shape_test(set1, set2):
@@ -43,24 +49,45 @@ def seperate_sig_bkg(df, branch="", target_Branch="y"):
     return sig_value, bkg_value, sig_idx, bkg_idx
 
 
-# Colorblind-safe (Okabe–Ito)
-ROC_COLOR   = "#0072B2"  # blue
-BASELINE    = "#7F7F7F"  # gray
+# Colorblind-safe (Okabe-Ito) palette for CMS-like plots
+COLORS = ["#5790fc", "#f89c20", "#e42536", "#964a8b", "#9c9ca1", "#7a21dd"]
+BASELINE = "#7F7F7F"
 
-def ROC_AUC(score, y, plot_path, weight=None, fname="ROC.png", style="CMS",
-            scale="linear", labels=None,
-            title=None, subtitle=None,
-            extra_text=None, extra_loc="upper left", extra_kwargs=None,
-            legend_loc="lower right"):
-    import os
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from sklearn.metrics import roc_curve, roc_auc_score
+
+def _apply_mplhep_style(style="CMS"):
     try:
-        import mplhep as hep
-        hep.style.use(style)
+        if style == "CMS":
+            hep.style.use(hep.style.CMS)
+        else:
+            hep.style.use(getattr(hep.style, style, style))
     except Exception:
         pass
+
+
+def _format_floatish(value, ndigits=3):
+    try:
+        return f"{float(value):.{ndigits}f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _format_roc_legend_label(label, auc, index, is_multi):
+    if label is not None:
+        label = str(label).strip()
+        if label:
+            return label if "auc" in label.lower() else f"{label} (AUC: {auc:.4f})"
+    if is_multi:
+        return f"Fold {index + 1} (AUC: {auc:.4f})"
+    return f"AUC: {auc:.4f}"
+
+
+def ROC_AUC(score, y, plot_path, weight=None, fname="ROC.png", style="CMS",
+            scale="linear", labels=None, log_xmin=1e-2,
+            title=None, subtitle=None,
+            extra_text=None, extra_loc="upper left", extra_kwargs=None,
+            legend_loc="lower right", legend_bbox_to_anchor=None,
+            legend_ncols=1, legend_fontsize=16):
+    _apply_mplhep_style(style)
 
     # normalize inputs to list-of-series
     is_multi = isinstance(score, (list, tuple))
@@ -73,24 +100,14 @@ def ROC_AUC(score, y, plot_path, weight=None, fname="ROC.png", style="CMS",
         y_list      = list(y) if isinstance(y, (list, tuple)) else [y]*len(score_list)
         weight_list = list(weight) if isinstance(weight, (list, tuple)) else [weight]*len(score_list)
 
-    # fallback colors if user constants are undefined
-    try:
-        BASELINE
-    except NameError:
-        BASELINE = "0.5"
-    try:
-        ROC_COLOR
-    except NameError:
-        ROC_COLOR = None  # let matplotlib choose
-
-    fig, ax = plt.subplots(figsize=(12.0, 9.0), dpi=150)
+    fig, ax = plt.subplots(figsize=(8.0, 8.0), dpi=300)
 
     # random baseline
     if scale == "log":
-        y = np.logspace(-2, 0, 300)
-        ax.plot(y, y, ls="--", lw=1.5, label="Random")
+        x_base = np.logspace(np.log10(log_xmin), 0, 300)
+        ax.plot(x_base, x_base, ls="--", lw=2.0, color=BASELINE, label="Random")
     else:
-        ax.plot([0, 1], [0, 1], ls="--", lw=1.5, label="Random")
+        ax.plot([0, 1], [0, 1], ls="--", lw=2.0, color=BASELINE, label="Random")
 
     aucs = []
     for i, (s, yy, w) in enumerate(zip(score_list, y_list, weight_list)):
@@ -109,24 +126,31 @@ def ROC_AUC(score, y, plot_path, weight=None, fname="ROC.png", style="CMS",
         auc = roc_auc_score(yy, s, sample_weight=w)
         aucs.append(auc)
 
-        lab = labels[i] if (labels and i < len(labels)) else (f"ROC (AUC = {auc:.3f})" if not is_multi else f"Fold {i} (AUC = {auc:.3f})")
-        ax.plot(fpr, tpr, lw=2.2, label=lab)
+        label = labels[i] if (labels and i < len(labels)) else None
+        color = COLORS[i % len(COLORS)]
+        lab = _format_roc_legend_label(label, auc, i, is_multi)
+        ax.plot(fpr, tpr, lw=2.5, color=color, label=lab)
 
     # axes cosmetics
     if scale == "log":
         ax.set_xscale("log")
-        ax.set_xlim(1e-2, 1.0)
+        ax.set_xlim(log_xmin, 1.0)
     else:
         ax.set_xlim(0.0, 1.0)
     ax.set_ylim(0.0, 1.0)
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
-    ax.grid(True, alpha=0.25, linestyle=":")
-    ax.legend(frameon=False, loc=legend_loc)
+    ax.set_xlabel("Background Efficiency", fontsize=20)
+    ax.set_ylabel("Signal Efficiency", fontsize=20)
+    ax.grid(False)
+    ax.tick_params(which="both", direction="in", top=True, right=True, length=6, width=1.2, labelsize=16)
+    ax.tick_params(which="minor", length=3)
+    legend_kwargs = dict(frameon=False, loc=legend_loc, fontsize=legend_fontsize, ncols=legend_ncols)
+    if legend_bbox_to_anchor is not None:
+        legend_kwargs["bbox_to_anchor"] = legend_bbox_to_anchor
+    ax.legend(**legend_kwargs)
 
     # CMS-like label (safe to skip if mplhep missing)
     try:
-        hep.cms.label(llabel="Preliminary", data=False, com=13, ax=ax)
+        hep.cms.label(llabel="Simulation Preliminary", data=False, com=13, ax=ax, fontsize=22)
     except Exception:
         pass
 
@@ -146,18 +170,18 @@ def ROC_AUC(score, y, plot_path, weight=None, fname="ROC.png", style="CMS",
 
         # 위치 해석
         loc_map = {
-            "upper left":  (0.02, 0.98, "left",  "top"),
-            "upper right": (0.98, 0.98, "right", "top"),
-            "lower left":  (0.02, 0.02, "left",  "bottom"),
-            "lower right": (0.98, 0.02, "right", "bottom"),
+            "upper left":  (0.04, 0.96, "left",  "top"),
+            "upper right": (0.96, 0.96, "right", "top"),
+            "lower left":  (0.04, 0.04, "left",  "bottom"),
+            "lower right": (0.96, 0.04, "right", "bottom"),
         }
         x, y, ha, va = loc_map.get(extra_loc, loc_map["upper left"])
 
         kw = dict(
             transform=ax.transAxes,
             ha=ha, va=va,
-            fontsize=12,
-            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none", alpha=0.6)
+            fontsize=16,
+            bbox=dict(boxstyle="square,pad=0", fc="none", ec="none")
         )
         if extra_kwargs:
             kw.update(extra_kwargs)
@@ -214,10 +238,8 @@ def draw_overall_mplhep(
       - kolS, kolB: KS p-value(문자/숫자). 제공 시에만 표기
       - 선형/로그 두 장 저장: {fname_base}_{postfix}.png, ..._log.png
     """
-    import os, numpy as np, matplotlib.pyplot as plt, mplhep as hep
-
     os.makedirs(plot_dir, exist_ok=True)
-    hep.style.use(hep.style.CMS)
+    _apply_mplhep_style("CMS")
 
     # 없으면 아예 종료
     if not any([hist_train_sig, hist_val_sig, hist_train_bkg, hist_val_bkg]):
@@ -266,32 +288,34 @@ def draw_overall_mplhep(
     _check_pair("tr_bkg", "va_bkg", "Background")
 
     # 색상
-    c_sig_t = "#009E73"; c_sig_v = "#007656"
-    c_bkg_t = "#D55E00"; c_bkg_v = "#A04600"
+    c_sig_t = "#5790fc"; c_sig_v = "#002b80"
+    c_bkg_t = "#e42536"; c_bkg_v = "#800000"
 
     def _plot_one(ax, logy=False):
         # 백그라운드: train fill / val step
         if ns["tr_bkg"] is not None:
             b,v,e = ns["tr_bkg"]
             hep.histplot(v, bins=b, yerr=e, histtype="errorbar",
-                                               alpha=0.55, label="Train (bkg.)", ax=ax, color=c_bkg_t)
+                                               alpha=0.55, label="Train Bkg.", ax=ax, color=c_bkg_t)
 
         if ns["va_bkg"] is not None:
             b,v,e = ns["va_bkg"]; hep.histplot(v, bins=b, yerr=e, histtype="step",
-                                               lw=2.5, label="Validation (bkg.)", ax=ax, color=c_bkg_v)
+                                               lw=2.5, label="Validation Bkg.", ax=ax, color=c_bkg_v)
 
         # 시그널: train fill / val step
         if ns["tr_sig"] is not None:
             b,v,e = ns["tr_sig"]; hep.histplot(v, bins=b, yerr=e, histtype="errorbar",
-                                               alpha=0.55, label="Train (sig.)", ax=ax, color=c_sig_t)
+                                               alpha=0.55, label="Train Sig.", ax=ax, color=c_sig_t)
         if ns["va_sig"] is not None:
             b,v,e = ns["va_sig"]; hep.histplot(v, bins=b, yerr=e, histtype="step",
-                                               lw=2.5, label="Validation (sig.)", ax=ax, color=c_sig_v)
+                                               lw=2.5, label="Validation Sig.", ax=ax, color=c_sig_v)
 
-        ax.set_xlabel("Score", fontsize=12)
-        ax.set_ylabel("1 / Events" if normalize else "Events", fontsize=12)
-        ax.grid(True, linestyle=":", alpha=0.35)
-        ax.legend(frameon=False, ncols=2, loc="upper right")
+        ax.set_xlabel("MVA Score", fontsize=20)
+        ax.set_ylabel("Arbitrary Units" if normalize else "Events", fontsize=20)
+        ax.grid(False)
+        ax.tick_params(which="both", direction="in", top=True, right=True, length=6, width=1.2, labelsize=16)
+        ax.tick_params(which="minor", length=3)
+        ax.legend(frameon=False, ncols=2, loc="upper center", fontsize=16)
 
         # CMS 라벨
         hep.cms.label(ax=ax, llabel=cms_extra, data=False, lumi=lumi_text, com=sqrts)
@@ -299,11 +323,12 @@ def draw_overall_mplhep(
         # KS 텍스트(제공된 것만)
         txts = []
         if kolS is not None and (ns["tr_sig"] is not None and ns["va_sig"] is not None):
-            txts.append(f"KS (sig) p = {kolS}")
+            txts.append(f"KS Sig. p-val = {_format_floatish(kolS)}")
         if kolB is not None and (ns["tr_bkg"] is not None and ns["va_bkg"] is not None):
-            txts.append(f"KS (bkg) p = {kolB}")
+            txts.append(f"KS Bkg. p-val = {_format_floatish(kolB)}")
         if txts:
-            ax.text(0.015, 0.94, "  ".join(txts), transform=ax.transAxes, fontsize=11, va="top")
+            ax.text(0.95, 0.75, "\n".join(txts), transform=ax.transAxes,
+                    fontsize=16, va="top", ha="right")
 
         if logy:
             ax.set_yscale("log")
@@ -330,56 +355,98 @@ def draw_overall_mplhep(
     base = fname_base if not postfix else f"{fname_base}_{postfix}"
 
     # 선형
-    fig1, ax1 = plt.subplots(figsize=(10, 8), dpi=dpi)
+    fig1, ax1 = plt.subplots(figsize=(8, 8), dpi=dpi)
     _plot_one(ax1, logy=False)
     fig1.tight_layout()
     fig1.savefig(os.path.join(plot_dir, f"{base}.png"), bbox_inches="tight")
     plt.close(fig1)
 
     # 로그
-    fig2, ax2 = plt.subplots(figsize=(10, 8), dpi=dpi)
+    fig2, ax2 = plt.subplots(figsize=(8, 8), dpi=dpi)
     _plot_one(ax2, logy=True)
     fig2.tight_layout()
     fig2.savefig(os.path.join(plot_dir, f"{base}_log.png"), bbox_inches="tight")
     plt.close(fig2)
+    
+_JET_LATEX_LABELS = {
+    # 복잡한 첨자 대신 간결한 표준 기호 사용
+    "had_t_b": r"b_h",
+    "w_u": r"q_U",
+    "w_d": r"q_D",
+    "lep_t_b": r"b_l",
+}
 
+_JET_OBSERVABLE_LATEX = {
+    "pt": r"p_{\mathrm{T}}",
+    "eta": r"\eta",
+    "phi": r"\phi",
+}
+
+_JET_TAGGER_LATEX = {
+    "bvsc": r"\mathrm{BvsC}",
+    "cvsb": r"\mathrm{CvsB}",
+    "cvsl": r"\mathrm{CvsL}",
+}
+
+def _wrap_math(expr):
+    return rf"${expr}$"
+
+def _feature_name_to_latex(name):
+    prefix, sep, suffix = name.partition("_")
+    if sep and suffix in _JET_LATEX_LABELS:
+        jet_expr = _JET_LATEX_LABELS[suffix]
+        if prefix in _JET_OBSERVABLE_LATEX:
+            return _wrap_math(rf"{_JET_OBSERVABLE_LATEX[prefix]}({jet_expr})")
+        if prefix in _JET_TAGGER_LATEX:
+            return _wrap_math(rf"{_JET_TAGGER_LATEX[prefix]}({jet_expr})")
+
+    special_labels = {
+        # 질량 변수들은 개별 제트의 나열이 아닌, 재구성된 입자 이름으로 직관적으로 표현
+        "m_had_w": _wrap_math(r"m(W_h)"),
+        "m_had_t": _wrap_math(r"m(t_h)"),
+        "n_bjets": _wrap_math(r"N_{\mathrm{b\text{-}jet}}"),
+        "n_cjets": _wrap_math(r"N_{\mathrm{c\text{-}jet}}"),
+        "n_jets": _wrap_math(r"N_{\mathrm{jet}}"),
+        "best_mva_score": _wrap_math(r"\mathcal{D}_{\mathrm{Reco}}"),
+        "least_dr_bb": _wrap_math(r"\min \Delta R(b,b)"),
+        "least_m_bb": _wrap_math(r"\min m(b,b)"),
+        "pt_tt": _wrap_math(r"p_{\mathrm{T}}(t\bar{t})"),
+        "ht": _wrap_math(r"H_{\mathrm{T}}"),
+        "year_index": "Data taking year", # 단순 Year index보다 논문에 적합
+    }
+    return special_labels.get(name, name)
 
 def draw_feature_importance_mplhep(
     varlist,
     feature_importance,
     plot_dir="plots",
-    fname_base="feature_importance",
+    fname_base="feature_importance_compact",
     *,
-    top_k=None,                # 상위 k개만 표기 (None이면 전체)
-    normalize=True,            # 중요도 합=1로 정규화
-    absolute=True,             # 중요도에 절댓값 적용 (음수 SHAP 등 대비)
-    sort_desc=True,            # 내림차순 정렬
-    dpi=160,
+    top_k=None,
+    normalize=True,
+    absolute=True,
+    sort_desc=True,
+    dpi=300,
     cms_extra="Preliminary",
     lumi_text="138",
     sqrts=13,
-    show_values=True           # 막대 끝에 값 라벨
+    show_values=True
 ):
-    """
-    varlist: List[str] — 특징 이름들
-    feature_importance: array-like — 각 특징의 중요도 (varlist와 길이 동일)
-
-    저장: {plot_dir}/{fname_base}.png (+ pdf)
-    반환: 저장 경로 dict
-    """
     os.makedirs(plot_dir, exist_ok=True)
+    
+    # 1. CMS 스타일 적용
     hep.style.use(hep.style.CMS)
+    
+    # 2. [핵심] 수식(MathText) 폰트만 Computer Modern (Serif)으로 덮어쓰기
+    # 일반 텍스트(CMS 라벨 등)는 Helvetica(Sans-serif)로 유지됩니다.
+    plt.rcParams.update({
+        "mathtext.fontset": "cm",
+        "mathtext.rm": "serif",
+    })
 
-    # --- 입력 정리 ---
+    # --- 입력 배열 정리 ---
     names = list(varlist)
     imp = np.asarray(feature_importance, dtype=float).copy()
-
-    if imp.ndim != 1:
-        raise ValueError(f"feature_importance must be 1-D, got shape {imp.shape}")
-    if len(names) != imp.size:
-        raise ValueError(f"len(varlist)={len(names)} != len(feature_importance)={imp.size}")
-
-    # NaN/Inf 방지
     imp = np.nan_to_num(imp, nan=0.0, posinf=0.0, neginf=0.0)
 
     if absolute:
@@ -389,44 +456,58 @@ def draw_feature_importance_mplhep(
         if s > 0:
             imp = imp / s
 
-    # 정렬 및 top-k
     order = np.argsort(imp)
     if sort_desc:
         order = order[::-1]
     if top_k is not None:
         order = order[:top_k]
 
-    names_sorted = [names[i] for i in order]
+    names_sorted = [_feature_name_to_latex(names[i]) for i in order]
     imp_sorted   = imp[order]
 
-    # --- 그림 크기 동적 설정 (가로 막대: 변수 많을수록 세로 키움) ---
     n = len(names_sorted)
-    height = max(2.8, min(0.45 * n + 1.2, 16.0))   # 합리적 범위
-    fig, ax = plt.subplots(figsize=(10, height), dpi=dpi)
+    
+    # 3. [핵심] 레이아웃 컴팩트화
+    # 그림의 세로 길이를 줄여서 라벨과 바(Bar)가 더 밀도 있게 모이도록 합니다.
+    height = max(3.0, n * 0.45) 
+    fig, ax = plt.subplots(figsize=(9, height), dpi=dpi)
 
-    # --- 플롯 ---
+    # 바 높이(두께)를 키우고(0.75), 간격을 좁힙니다.
     y = np.arange(n)
-    ax.barh(y, imp_sorted, align="center", alpha=0.9)
+    bars = ax.barh(y, imp_sorted, align="center", height=0.75, alpha=0.9, color="#5790fc")
+    
     ax.set_yticks(y)
-    ax.set_yticklabels(names_sorted)
-    ax.invert_yaxis()  # 가장 중요한 게 위로 오도록
-    ax.set_xlabel("Feature Importance" + (" (normalized)" if normalize else ""))
-    ax.grid(axis="x", linestyle=":", alpha=0.35)
-    ax.margins(x=0.02)
+    ax.set_yticklabels(names_sorted, fontsize=16) # 라벨 폰트 크기 최적화
+    ax.invert_yaxis()  
+    
+    xlabel_text = "Feature Importance" + (" (normalized)" if normalize else "")
+    ax.set_xlabel(xlabel_text, fontsize=18)
+    
+    # 그리드 스타일 정리 (점선으로 약하게)
+    ax.xaxis.grid(True, linestyle=":", alpha=0.5, color="gray")
+    ax.set_axisbelow(True)
+    
+    # 상하 여백을 확 줄여서 낭비되는 공간 최소화
+    ax.margins(x=0.05, y=0.01)
 
-    # 값 표시(우측 끝)
+    # 4. 값 텍스트 표시
     if show_values:
+        max_val = np.max(imp_sorted)
+        padding = max_val * 0.02 # 바 끝에서 텍스트까지의 간격
+        
         for yi, val in zip(y, imp_sorted):
             if normalize:
-                txt = f"{val*100:.1f}%"
+                # % 기호 포맷팅 (레이텍 충돌 방지를 위해 이스케이프)
+                txt = f"{val*100:.1f}\%" 
             else:
                 txt = f"{val:.3g}"
-            ax.text(val + (0.01 if normalize else 0.0), yi, txt,
-                    va="center", ha="left", fontsize=10)
+            
+            ax.text(val + padding, yi, txt,
+                    va="center", ha="left", fontsize=13)
 
-    # CMS 라벨
+    # 5. CMS 헤더
     hep.cms.label(ax=ax, llabel=cms_extra, data=False,
-                  lumi=lumi_text, com=sqrts)
+                  lumi=lumi_text, com=sqrts, fontsize=18)
 
     fig.tight_layout()
     out_png = os.path.join(plot_dir, f"{fname_base}.png")
@@ -677,34 +758,39 @@ def Draw_KS_test(train_score, val_score, plotPath="img.png", isSig=True, kol=0,
     y_va_star = np.searchsorted(va_sorted, x_star, side="right") / va.size
 
     # --- CMS style ---
-    hep.style.use(hep.style.CMS)
+    _apply_mplhep_style("CMS")
 
     # --- figure ---
-    fig, ax = plt.subplots(figsize=(7, 4.6), dpi=160)
+    fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
+
+    color_train = "#5790fc" if isSig else "#e42536"
+    color_val = "#002b80" if isSig else "#800000"
 
     # ECDF는 계단(step)으로
-    ax.step(x, y_tr, where="post", linewidth=1.8, label="Train")
-    ax.step(x, y_va, where="post", linewidth=1.8, label="Validation")
+    ax.step(x, y_tr, where="post", linewidth=2.5, label="Train", color=color_train)
+    ax.step(x, y_va, where="post", linewidth=2.5, label="Validation", color=color_val)
 
     # KS 수직선
     ax.plot([x_star, x_star], [y_tr_star, y_va_star],
-            linestyle="--", linewidth=2, label=f"KS $D$ = {D:.3f}")
+            linestyle="--", linewidth=2.5, color="black", label=f"KS $D$ = {D:.3f}")
 
-    # 발표용 레이블
-    title = f"{'Signal' if isSig else 'Bkg.'}  |  KS D={D:.3f}  |  kol={kol}"
-    ax.set_title(title, fontsize=12)
-    ax.set_xlabel("Score")
-    ax.set_ylabel("ECDF")
-    ax.grid(True, linestyle=":", alpha=0.35)
-    ax.legend(frameon=False, loc="lower right")
+    ax.set_xlabel("MVA Score", fontsize=20)
+    ax.set_ylabel("Cumulative Probability", fontsize=20)
+    ax.grid(False)
+    ax.tick_params(which="both", direction="in", top=True, right=True, length=6, width=1.2, labelsize=16)
+    ax.tick_params(which="minor", length=3)
+    ax.text(0.05, 0.90, "Signal" if isSig else "Background",
+            transform=ax.transAxes, fontsize=22, fontweight="bold")
+    ax.legend(frameon=False, loc="center right", fontsize=16)
 
     # CMS 라벨 (가능하면 활용)
     try:
-        # 예: lumi="138 fb$^{-1}$", year=2018
-        hep.cms.label(ax=ax, llabel=cms_llabel, data=True, lumi=lumi, year=year)
+        hep.cms.label(ax=ax, llabel=cms_llabel, data=False, lumi=lumi, year=year, com=13)
     except Exception:
-        # mplhep 버전에 따라 label 인자가 다를 수 있어 안전장치
-        hep.cms.text(cms_llabel)
+        try:
+            hep.cms.label(ax=ax, llabel=cms_llabel, data=False, lumi=lumi, com=13)
+        except Exception:
+            hep.cms.text(cms_llabel)
 
     # 저장
     Path(plotPath).parent.mkdir(parents=True, exist_ok=True)
